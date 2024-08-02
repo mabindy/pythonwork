@@ -1,0 +1,10 @@
+int1 = int(input("Type the first number."))
+int2 = int(input("Type the second number."))
+multiplyResult = int1 * int2
+divideResult = int1 / int2
+addResult = int1 + int2
+subtractResult = int1 - int2
+print(f"{int1} * {int2} = {multiplyResult}")
+print(f"{int1} / {int2} = {divideResult}")
+print(f"{int1} + {int2} = {addResult}")
+print(f"{int1} - {int2} = {subtractResult}")
