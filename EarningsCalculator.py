@@ -1,0 +1,5 @@
+savingsGoal = int(input("How much money do you want to save in a year?"))
+perMonth = round(savingsGoal / 12, 2)
+perWeek = round(perMonth / 4, 2)
+perDay = round(perWeek / 7, 2)
+print(f"If you wanted to save ${savingsGoal} in one year, you would have to save ${perMonth} a month. That is ${perWeek} a week, or ${perDay} a day.")
