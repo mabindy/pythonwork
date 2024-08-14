@@ -1,0 +1,6 @@
+asknum = int(input("Input an integer"))
+def divisors(divisor):
+    divisorlist = [i for i in range(2,divisor) if divisor % i == 0]
+    return f"{divisor} is prime" if len(divisorlist) == 0 else divisorlist
+
+print(divisors(asknum))
