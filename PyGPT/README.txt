@@ -1,0 +1,1 @@
+You must install gpt4free to get this to work. You can install it by running "pip install -U g4f" in CMD.
