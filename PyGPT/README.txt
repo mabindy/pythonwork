@@ -1,1 +1,1 @@
-You must install gpt4free to get this to work. You can install it by running "pip install -U g4f" in CMD.
+You must install gpt4free to get this to work. You can install it by running "pip install -U g4f" in Command Prompt. PyGPT is still buggy and isn't very fast but it works in its current state.

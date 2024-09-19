@@ -1,27 +1,29 @@
+import json
+import os
 from g4f.client import Client
 
 client = Client()
 usingai = True
 convo_logs = []
-log_file = r"C:\Users\mberr954\Desktop\vscode projects\flippybot\pygptlogs.txt"
-
+log_directory = os.path.join(os.path.expanduser('~'), "Documents", "PyGPT")
+log_file = os.path.join(log_directory, "pygptlogs.json")
+os.makedirs(log_directory, exist_ok=True)
+# Loads the logs from the last conversation before quitting, or returns no chatlogs if there was no previous conversation.
 def load_convo_logs():
     try:
         with open(log_file, 'r') as file:
-            logs = []
-            for line in file:
-                role, content = line.strip().split(': ', 1)  # Split line into role and content
-                logs.append({"role": role, "content": content})  # Create a dictionary for each log
+            logs = json.load(file) 
             return logs
     except FileNotFoundError:
         return []
-    except ValueError:
+    except json.JSONDecodeError:
         print("ChatGPT: There was an issue reading the logs file, so it has been reset. Logs saving is still in a buggy state right now.")
         return []
+
+# Saves the conversation logs to a .json file
 def save_convo_logs():
     with open(log_file, 'w') as file:
-        for log in convo_logs:
-            file.write(f"{log['role']}: {log['content']}\n")
+        json.dump(convo_logs, file, indent=4) 
 
 convo_logs = load_convo_logs()
 
@@ -30,10 +32,11 @@ while usingai:
     if user_input.lower() in ['exit', 'quit']:
         usingai = False
         break
-    if user_input.lower() in ['reset','new']:
+    if user_input.lower() in ['reset', 'new']:
         convo_logs = []
         print("ChatGPT: The conversation has been reset.")
         continue
+
     convo_logs.append({"role": "user", "content": user_input})
     response = client.chat.completions.create(
         model="gpt-4-turbo",
