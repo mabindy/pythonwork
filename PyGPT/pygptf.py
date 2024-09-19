@@ -15,7 +15,9 @@ def load_convo_logs():
             return logs
     except FileNotFoundError:
         return []
-
+    except ValueError:
+        print("ChatGPT: There was an issue reading the logs file, so it has been reset. Logs saving is still in a buggy state right now.")
+        return []
 def save_convo_logs():
     with open(log_file, 'w') as file:
         for log in convo_logs:
@@ -34,7 +36,7 @@ while usingai:
         continue
     convo_logs.append({"role": "user", "content": user_input})
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4-turbo",
         messages=convo_logs,
     )
     ai_response = response.choices[0].message.content
