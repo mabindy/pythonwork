@@ -27,6 +27,7 @@ def save_convo_logs():
 
 convo_logs = load_convo_logs()
 
+print('PyGPT V1.0')
 while usingai:
     user_input = input("You: ")
     if user_input.lower() in ['exit', 'quit']:
@@ -35,6 +36,7 @@ while usingai:
     if user_input.lower() in ['reset', 'new']:
         convo_logs = []
         print("ChatGPT: The conversation has been reset.")
+        save_convo_logs()
         continue
 
     convo_logs.append({"role": "user", "content": user_input})
@@ -43,6 +45,9 @@ while usingai:
         messages=convo_logs,
     )
     ai_response = response.choices[0].message.content
+    if ai_response == "One message exceeds the 1000chars per message limit. Join our discord for more: [https://discord.com/invite/q55gsH8z5F](https://discord.com/invite/q55gsH8z5F)":
+        print("ChatGPT: Character limit error occurred. Ask the same question again.")
+        continue
     convo_logs.append({"role": "assistant", "content": ai_response})
     print(f'ChatGPT: {ai_response}')
 
