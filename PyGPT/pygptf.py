@@ -1,3 +1,4 @@
+import sys
 import atexit
 import logging
 import json
@@ -10,6 +11,8 @@ convo_logs = []
 log_directory = os.path.join(os.path.expanduser('~'), "Documents", "PyGPT")
 log_file = os.path.join(log_directory, "pygptlogs.json")
 errlog_file = os.path.join(log_directory, "errors.log")
+current_model = 'gpt-4-turbo'
+available_models = ['gpt-4-turbo', 'gpt-3.5-turbo', 'gpt-4']
 
 os.makedirs(log_directory, exist_ok=True)
 
@@ -22,8 +25,11 @@ logging.basicConfig(
 )
 
 def on_exit():
-    print('ChatGPT: PyGPT has stopped unexpectedly.')
-    logging.warning('The program was terminated unexpectedly.')
+    if sys.exc_info() == (None, None, None):
+        logging.info('Program exited successfully.')
+    else:
+        print('ChatGPT: PyGPT has stopped unexpectedly.')
+        logging.error('The program was terminated unexpectedly', exc_info=True)
 
 atexit.register(on_exit)
 
@@ -50,9 +56,40 @@ def save_convo_logs():
 
 convo_logs = load_convo_logs()
 
-print('PyGPT V1.1')
+print('🤖 PyGPT V1.2')
 while usingai:
     user_input = input("You: ")
+    if user_input.lower() in ['help', '?']:
+        help_text = """
+        Commands:
+        - 'exit' or 'quit': Quit the program
+        - 'reset' or 'new': Reset the conversation
+        - 'help' or '?': Display this help message
+        - 'model [model_name]': Switch ChatGPT model
+        - 'models': Display available ChatGPT models
+        - 'currentmodel': Display the currently selected model
+        """
+        print(help_text)
+        continue
+
+    if user_input.lower().startswith('model '):
+        new_model = user_input.split(' ', 1)[1]
+        if new_model in available_models:
+            current_model = new_model
+            print(f'ChatGPT: Model switched to {current_model}.')
+            logging.info(f'GPT model successfully switched to {current_model}')
+        else:
+            print('ChatGPT: Invalid model name.')
+        continue
+
+    if user_input.lower() == 'models':
+        print(f'ChatGPT: Available models are: {available_models}')
+        continue
+
+    if user_input.lower() == 'currentmodel':
+        print(f'ChatGPT: The currently selected model is {current_model}.')
+        continue
+
     if user_input.lower() in ['exit', 'quit']:
         usingai = False
         break
@@ -66,7 +103,7 @@ while usingai:
     convo_logs.append({"role": "user", "content": user_input})
     try:
         response = client.chat.completions.create(
-            model="gpt-4-turbo",
+            model=current_model,
             messages=convo_logs,
         )
         ai_response = response.choices[0].message.content
