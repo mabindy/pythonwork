@@ -4,6 +4,7 @@ from ursina.shaders import lit_with_shadows_shader
 from ursina import Slider
 from perlin_noise import PerlinNoise
 from ursina.collider import BoxCollider
+from ursina.texture_importer import load_texture
 import random
 
 app = Ursina(borderless=False, title='PyCraft', icon='pycraftlogo.ico')
@@ -11,61 +12,97 @@ app = Ursina(borderless=False, title='PyCraft', icon='pycraftlogo.ico')
 window.fullscreen = False
 
 fov_slider = None
+
+
 # Define a Voxel class.
 # By setting the parent to scene and the model to 'cube' it becomes a 3d button.
 class Voxel(Button):
     def __init__(self, position=(0,0,0)):
+        base_color = color.hsv(0, 0, random.uniform(.9, 1.0))
         super().__init__(parent=scene,
             position=position,
             model='cube',
             origin_y=.5,
-            texture='white_cube',
-            color=color.hsv(0, 0, random.uniform(.9, 1.0)),
-            highlight_color=color.cyan,
+            texture='pycrafttextures/cobblestone.png',
+            color=base_color,
         )
+        r = min(base_color.r + 0.1, 1.0)
+        g = min(base_color.g + 0.1, 1.0)
+        b = min(base_color.b + 0.1, 1.0)
+        self.highlight_color = color.rgb(r, g, b)
+
+class OreVoxel(Button):
+    def __init__(self, position=(0,0,0)):
+        base_color = color.hsv(0, 0, random.uniform(.9, 1.0))
+        super().__init__(parent=scene,
+            position=position,
+            model='cube',
+            origin_y=.5,
+            texture='pycrafttextures/iron_ore.png',
+            color=base_color,
+        )
+        r = min(base_color.r + 0.1, 1.0)
+        g = min(base_color.g + 0.1, 1.0)
+        b = min(base_color.b + 0.1, 1.0)
+        self.highlight_color = color.rgb(r, g, b)
+
 
 class GroundVoxel(Button):
     def __init__(self, position=(0,0,0)):
+        base_color = color.hsv(120, 0.75, 0.7)
         super().__init__(parent=scene,
             position=position,
             model='cube',
             origin_y=.5,
-            texture='white_cube',
-            color=color.hsv(120, 0.75, 0.7),
+            texture='pycrafttextures/grass_top.png',
+            color=base_color,
             highlight_color=color.cyan,
         )
-        
+        r = min(base_color.r + 0.1, 1.0)
+        g = min(base_color.g + 0.1, 1.0)
+        b = min(base_color.b + 0.1, 1.0)
+        self.highlight_color = color.rgb(r, g, b)
 
 class BrownVoxel(Button):
     def __init__(self, position=(0,0,0)):
+        base_color = color.hsv(30, 0.5, 0.7)
         super().__init__(parent=scene,
             position=position,
             model='cube',
             origin_y=.5,
-            texture='white_cube',
-            color=color.hsv(30, 0.5, 0.5),
+            texture='pycrafttextures/default_dirt.png',
+            color=base_color,
             highlight_color=color.cyan,
             collider='box'
         )
+        r = min(base_color.r + 0.1, 1.0)
+        g = min(base_color.g + 0.1, 1.0)
+        b = min(base_color.b + 0.1, 1.0)
+        self.highlight_color = color.rgb(r, g, b)
 class Bedrock(Button):
     def __init__(self, position=(0,0,0)):
+        base_color = color.hsv(0, 0, 1)
         super().__init__(parent=scene,
             position=position,
             model='cube',
             origin_y=.5,
-            texture='white_cube',
-            color=color.hsv(0, 0, 0),
+            texture='pycrafttextures/bedrocktexture.png',
+            color=base_color,
             highlight_color=color.cyan,
         )
+        r = min(base_color.r + 0.1, 1.0)
+        g = min(base_color.g + 0.1, 1.0)
+        b = min(base_color.b + 0.1, 1.0)
+        self.highlight_color = color.rgb(r, g, b)
         self.destroyable = False
 
 
 
 noise = PerlinNoise (octaves=3, seed=random.randint(1,1000000))
 min_y = -5
-
-for z in range(-10,10):
-    for x in range(-10,10):
+worlddimensions = 15 #World dimensions are twice this number 
+for z in range(-worlddimensions,worlddimensions):
+    for x in range(-worlddimensions,worlddimensions):
         surface_y = noise([x * .02,z * .02])
         surface_y = math.floor(surface_y*7.5)
         for y in range(min_y, surface_y + 1):
@@ -77,8 +114,69 @@ for z in range(-10,10):
             elif y > surface_y - 3:
                 voxel = BrownVoxel(position=position)
             else:
-                voxel = Voxel(position=position)
-            
+                oregenerator = random.randint(0,10)
+                if oregenerator == 5:
+                    voxel = OreVoxel(position=position)
+                else:
+                    voxel = Voxel(position=position)
+wall_thickness = 1
+wall_height = 200
+voxel_size = 1
+
+min_xz = -worlddimensions
+max_xz = worlddimensions - 1
+terrain_min_xz = min_xz - voxel_size / 2
+terrain_max_xz = max_xz + voxel_size / 2
+terrain_width_xz = terrain_max_xz - terrain_min_xz
+
+north_wall = Entity(
+    model = 'cube',
+    scale = (terrain_width_xz, wall_height, wall_thickness),
+    position = (
+        (terrain_min_xz + terrain_max_xz) / 2,
+        wall_height / 2 + min_y,
+        terrain_max_xz + wall_thickness / 2,
+    ),
+    collider = 'box',
+    visible = False,
+    destroyable = False,
+)
+south_wall = Entity(
+    model = 'cube',
+    scale = (terrain_width_xz, wall_height, wall_thickness),
+    position = (
+        (terrain_min_xz + terrain_max_xz) / 2,
+        wall_height / 2 + min_y,
+        terrain_min_xz - wall_thickness / 2,
+    ),
+    collider = 'box',
+    visible = False,
+    destroyable = False,
+)
+east_wall = Entity(
+    model = 'cube',
+    scale = (wall_thickness, wall_height, terrain_width_xz),
+    position=(
+        terrain_max_xz + wall_thickness / 2,
+        wall_height / 2 + min_y,
+        (terrain_min_xz + terrain_max_xz) / 2
+    ),
+    collider = 'box',
+    visible = False,
+    destroyable = False,
+)
+west_wall = Entity(
+    model = 'cube',
+    scale = (wall_thickness, wall_height, terrain_width_xz),
+    position=(
+        terrain_min_xz + wall_thickness / 2,
+        wall_height / 2 + min_y,
+        (terrain_min_xz + terrain_max_xz) / 2
+    ),
+    collider = 'box',
+    visible = False,
+    destroyable = False,
+)
 
 hotbar = Button( 
                 color=color.rgba(255,255,255,0.8), 
@@ -254,7 +352,7 @@ def input(key):
         
     if mouse.locked:
         if key == 'right mouse down':
-            hit_info = raycast(camera.world_position, camera.forward, distance=5)
+            hit_info = raycast(camera.world_position, camera.forward, distance=5, ignore=(player,))
             if hit_info.hit and selectedvoxel:
                 selectedvoxel(position=hit_info.entity.position + hit_info.normal)
                 
@@ -264,7 +362,7 @@ def input(key):
                         
                 invoke(hand.animate_rotation, defrot, duration=0.2, curve=curve.in_out_quad, delay=0.2)
                 
-        if (key == 'left mouse down' and mouse.hovered_entity) or (key == 'left mouse down' and selected == 'ak'):
+        if (key == 'left mouse down' and mouse.hovered_entity and mouse.hovered_entity != player) or (key == 'left mouse down' and selected == 'ak'):
             if hasattr(mouse.hovered_entity, 'destroyable') and not mouse.hovered_entity.destroyable:
 
                 pass
@@ -284,40 +382,51 @@ def input(key):
         
         if key == 'middle mouse down' and mouse.hovered_entity:
             voxcolor = mouse.hovered_entity.color
+            blocktexture =mouse.hovered_entity.texture
             if hasattr(mouse.hovered_entity, 'destroyable'):
                 class CopiedVoxel(Button):
                     def __init__(self, position=(0,0,0)):
+                        base_color = color.rgb(voxcolor.r, voxcolor.g, voxcolor.b)
                         super().__init__(parent=scene,
                         position=position,
                         model='cube',
                         origin_y=.5,
-                        texture='white_cube',
+                        texture=blocktexture,
                         color=color.rgb(voxcolor.r, voxcolor.g, voxcolor.b),
                         highlight_color=color.cyan,
-                    )
+                        )
+                        r = min(base_color.r + 0.1, 1.0)
+                        g = min(base_color.g + 0.1, 1.0)
+                        b = min(base_color.b + 0.1, 1.0)
+                        self.highlight_color = color.rgb(r, g, b)
                         self.destroyable = False
             else:
                 class CopiedVoxel(Button):
                     def __init__(self, position=(0,0,0)):
+                        base_color = color.rgb(voxcolor.r, voxcolor.g, voxcolor.b)
                         super().__init__(parent=scene,
                         position=position,
                         model='cube',
                         origin_y=.5,
-                        texture='white_cube',
-                        color=color.rgb(voxcolor.r, voxcolor.g, voxcolor.b),
+                        texture=blocktexture,
+                        color=base_color,
                         highlight_color=color.cyan,
-                    )
+                        )
+                        r = min(base_color.r + 0.1, 1.0)
+                        g = min(base_color.g + 0.1, 1.0)
+                        b = min(base_color.b + 0.1, 1.0)
+                        self.highlight_color = color.rgb(r, g, b)
             selectedvoxel = CopiedVoxel
             selected = 'copiedblock'
             defrot = (0,0,0)
             destroy(selector)
             destroy(hand)
-            hand = Entity(model='cube',texture='white_cube', color=color.rgb(voxcolor.r, voxcolor.g, voxcolor.b), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+            hand = Entity(model='cube',texture=blocktexture, color=color.rgb(voxcolor.r, voxcolor.g, voxcolor.b), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
         if key == '1':
             selectedvoxel = Voxel
             selected = 'basic'
             destroy(hand)
-            hand = Entity(model='cube',texture='white_cube', color=color.hsv(0, 0, random.uniform(.9, 1.0)), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+            hand = Entity(model='cube',texture='pycrafttextures/cobblestone.png', color=color.hsv(0, 0, random.uniform(.9, 1.0)), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
             defrot = hand.rotation
             destroy(selector)
             selector = Button( 
@@ -329,7 +438,7 @@ def input(key):
             selectedvoxel = BrownVoxel
             selected = 'dirt'
             destroy(hand)
-            hand = Entity(model='cube',texture='white_cube', color=color.hsv(30, 0.5, 0.5), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+            hand = Entity(model='cube',texture='pycrafttextures/default_dirt.png', color=color.hsv(30, 0.5, 0.7), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
             defrot = hand.rotation
             destroy(selector)
             selector = Button( 
@@ -369,12 +478,8 @@ def update():
             issprinting = False
     player.enabled = mouse.locked
 player = FirstPersonController()
-player._collider = BoxCollider(
-    player,
-    center = Vec3(0,1,0),
-    size = Vec3(1,2,1)
-)
+player.height = 1.8
 player.camera_pivot.y = 1.8
-
+Sky()
 
 app.run()
