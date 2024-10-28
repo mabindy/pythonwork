@@ -5,11 +5,13 @@ from ursina import Slider
 from perlin_noise import PerlinNoise
 from ursina.collider import BoxCollider
 from ursina.texture_importer import load_texture
+from ursina import InputField
 import random
 import json
 import os
+import math
 
-app = Ursina(borderless=False, title='PyCraft', icon='pycraftlogo.ico')
+app = Ursina(borderless=False, title='PyCraft', icon='PyCraft/pycraftlogo.ico')
 
 world_data = []
 
@@ -27,7 +29,7 @@ class Voxel(Button):
             position=position,
             model='cube',
             origin_y=.5,
-            texture='pycrafttextures/cobblestone.png',
+            texture='PyCraft/Textures/cobblestone.png',
             color=base_color,
             isblock = True
         )
@@ -43,7 +45,7 @@ class IronOreVoxel(Button):
             position=position,
             model='cube',
             origin_y=.5,
-            texture='pycrafttextures/iron_ore.png',
+            texture='PyCraft/Textures/iron_ore.png',
             color=base_color,
             isblock = True
         )
@@ -59,7 +61,7 @@ class CoalOreVoxel(Button):
             position=position,
             model='cube',
             origin_y=.5,
-            texture='pycrafttextures/coal_ore.png',
+            texture='PyCraft/Textures/coal_ore.png',
             color=base_color,
             isblock = True
         )
@@ -75,7 +77,7 @@ class OakPlanksVoxel(Button):
             position=position,
             model='cube',
             origin_y=.5,
-            texture='pycrafttextures/oak_planks.png',
+            texture='PyCraft/Textures/oak_planks.png',
             color=base_color,
             isblock = True
         )
@@ -91,7 +93,7 @@ class GlassVoxel(Button):
             position=position,
             model='cube',
             origin_y=.5,
-            texture='pycrafttextures/glass.png',
+            texture='PyCraft/Textures/glass.png',
             color=base_color,
             isblock = True
         )
@@ -107,7 +109,7 @@ class GroundVoxel(Button):
             position=position,
             model='cube',
             origin_y=.5,
-            texture='pycrafttextures/grass_top.png',
+            texture='PyCraft/Textures/grass_top.png',
             color=base_color,
             highlight_color=color.cyan,
             isblock = True
@@ -124,7 +126,7 @@ class BrownVoxel(Button):
             position=position,
             model='cube',
             origin_y=.5,
-            texture='pycrafttextures/default_dirt.png',
+            texture='PyCraft/Textures/default_dirt.png',
             color=base_color,
             highlight_color=color.cyan,
             collider='box',
@@ -144,7 +146,7 @@ class DoorVoxel(Button):
             model='cube',
             scale = (1,2,0.25),
             origin_y=.5,
-            texture='pycrafttextures/oak_door.png',
+            texture='PyCraft/Textures/oak_door.png',
             color=base_color,
             highlight_color=color.cyan,
             collider='box'
@@ -161,7 +163,7 @@ class Bedrock(Button):
             position=position,
             model='cube',
             origin_y=.5,
-            texture='pycrafttextures/bedrocktexture.png',
+            texture='PyCraft/Textures/bedrocktexture.png',
             color=base_color,
             highlight_color=color.cyan,
             isblock = True
@@ -173,100 +175,103 @@ class Bedrock(Button):
         self.destroyable = False
 
 
-
-noise = PerlinNoise (octaves=3, seed=random.randint(1,1000000))
-min_y = -10
-worlddimensions = 10 #World dimensions are twice this number 
-for z in range(-worlddimensions,worlddimensions):
-    for x in range(-worlddimensions,worlddimensions):
-        surface_y = noise([x * .02,z * .02])
-        surface_y = math.floor(surface_y*7.5)
-        for y in range(min_y, surface_y + 1):
-            position = (x, y, z)
-            if y == surface_y:
-                voxel = GroundVoxel(position=position)
-                block_type = 'GroundVoxel'
-            elif y == min_y:
-                voxel = Bedrock(position=position)
-                block_type = 'Bedrock'
-            elif y > surface_y - 3:
-                voxel = BrownVoxel(position=position)
-                block_type = 'BrownVoxel'
-            else:
-                oregenerator = random.randint(0,20)
-                if oregenerator == 5 and y < surface_y - 10:
-                    voxel = IronOreVoxel(position=position)
-                    block_type = 'IronOreVoxel'
-                elif oregenerator == 15:
-                    voxel = CoalOreVoxel(position=position)
-                    block_type = 'CoalOreVoxel'
+def generate_world():
+    clear_world()
+    noise = PerlinNoise (octaves=3, seed=random.randint(1,1000000))
+    min_y = -10
+    worlddimensions = 10 #World dimensions are twice this number 
+    for z in range(-worlddimensions,worlddimensions):
+        for x in range(-worlddimensions,worlddimensions):
+            surface_y = noise([x * .02,z * .02])
+            surface_y = math.floor(surface_y*7.5)
+            for y in range(min_y, surface_y + 1):
+                position = (x, y, z)
+                if y == surface_y:
+                    voxel = GroundVoxel(position=position)
+                    block_type = 'GroundVoxel'
+                elif y == min_y:
+                    voxel = Bedrock(position=position)
+                    block_type = 'Bedrock'
+                elif y > surface_y - 3:
+                    voxel = BrownVoxel(position=position)
+                    block_type = 'BrownVoxel'
                 else:
-                    voxel = Voxel(position=position)
-                    block_type = 'Voxel'
-            world_data.append({'position': [x, y, z], 'block_type': block_type})
-wall_thickness = 1
-wall_height = 200
-voxel_size = 1
+                    oregenerator = random.randint(0,20)
+                    if oregenerator == 5 and y < surface_y - 10:
+                        voxel = IronOreVoxel(position=position)
+                        block_type = 'IronOreVoxel'
+                    elif oregenerator == 15:
+                        voxel = CoalOreVoxel(position=position)
+                        block_type = 'CoalOreVoxel'
+                    else:
+                        voxel = Voxel(position=position)
+                        block_type = 'Voxel'
+                world_data.append({'position': [x, y, z], 'block_type': block_type})
+    wall_thickness = 1
+    wall_height = 200
+    voxel_size = 1
 
-min_xz = -worlddimensions
-max_xz = worlddimensions - 1
-terrain_min_xz = min_xz - voxel_size / 2
-terrain_max_xz = max_xz + voxel_size / 2
-terrain_width_xz = terrain_max_xz - terrain_min_xz
+    min_xz = -worlddimensions
+    max_xz = worlddimensions - 1
+    terrain_min_xz = min_xz - voxel_size / 2
+    terrain_max_xz = max_xz + voxel_size / 2
+    terrain_width_xz = terrain_max_xz - terrain_min_xz
 
-north_wall = Entity(
-    model = 'cube',
-    scale = (terrain_width_xz, wall_height, wall_thickness),
-    position = (
-        (terrain_min_xz + terrain_max_xz) / 2,
-        wall_height / 2 + min_y,
-        terrain_max_xz + wall_thickness / 2,
-    ),
-    collider = 'box',
-    visible = False,
-    destroyable = False,
-    wall = True
-)
-south_wall = Entity(
-    model = 'cube',
-    scale = (terrain_width_xz, wall_height, wall_thickness),
-    position = (
-        (terrain_min_xz + terrain_max_xz) / 2,
-        wall_height / 2 + min_y,
-        terrain_min_xz - wall_thickness / 2,
-    ),
-    collider = 'box',
-    visible = False,
-    destroyable = False,
-    wall = True
-)
-east_wall = Entity(
-    model = 'cube',
-    scale = (wall_thickness, wall_height, terrain_width_xz),
-    position=(
-        terrain_max_xz + wall_thickness / 2,
-        wall_height / 2 + min_y,
-        (terrain_min_xz + terrain_max_xz) / 2
-    ),
-    collider = 'box',
-    visible = False,
-    destroyable = False,
-    wall = True
-)
-west_wall = Entity(
-    model = 'cube',
-    scale = (wall_thickness, wall_height, terrain_width_xz),
-    position=(
-        terrain_min_xz + wall_thickness / 2 - 1,
-        wall_height / 2 + min_y,
-        (terrain_min_xz + terrain_max_xz) / 2
-    ),
-    collider = 'box',
-    visible = False,
-    destroyable = False,
-    wall = True
-)
-
+    north_wall = Entity(
+        model = 'cube',
+        scale = (terrain_width_xz, wall_height, wall_thickness),
+        position = (
+            (terrain_min_xz + terrain_max_xz) / 2,
+            wall_height / 2 + min_y,
+            terrain_max_xz + wall_thickness / 2,
+        ),
+        collider = 'box',
+        visible = False,
+        destroyable = False,
+        wall = True
+    )
+    south_wall = Entity(
+        model = 'cube',
+        scale = (terrain_width_xz, wall_height, wall_thickness),
+        position = (
+            (terrain_min_xz + terrain_max_xz) / 2,
+            wall_height / 2 + min_y,
+            terrain_min_xz - wall_thickness / 2,
+        ),
+        collider = 'box',
+        visible = False,
+        destroyable = False,
+        wall = True
+    )
+    east_wall = Entity(
+        model = 'cube',
+        scale = (wall_thickness, wall_height, terrain_width_xz),
+        position=(
+            terrain_max_xz + wall_thickness / 2,
+            wall_height / 2 + min_y,
+            (terrain_min_xz + terrain_max_xz) / 2
+        ),
+        collider = 'box',
+        visible = False,
+        destroyable = False,
+        wall = True
+    )
+    west_wall = Entity(
+        model = 'cube',
+        scale = (wall_thickness, wall_height, terrain_width_xz),
+        position=(
+            terrain_min_xz + wall_thickness / 2 - 1,
+            wall_height / 2 + min_y,
+            (terrain_min_xz + terrain_max_xz) / 2
+        ),
+        collider = 'box',
+        visible = False,
+        destroyable = False,
+        wall = True
+    )
+    player.position = Vec3(*[0,0,0])
+    destroy_play_menu()
+    mouse.locked = True
 hotbar = Button( 
                 color=color.rgba(255,255,255,0.8), 
                 position=(0, -0.4,0.1), 
@@ -308,7 +313,6 @@ def rebuild_world_from_data():
         block_type = block['block_type']
         x, y, z = position
         position = Vec3(x,y,z)
-
         if block_type == 'Voxel':
             Voxel(position=position)
         elif block_type == 'GroundVoxel':
@@ -327,17 +331,25 @@ def rebuild_world_from_data():
             GlassVoxel(position=position)
         
 
-def save_world(filename=r'C:\Users\mberr954\Documents\world_save.json'):
+def save_world(filename=r'C:\Users\mberr954\Documents\PyCraft\Worlds\world_save.json'):
+    save_data = {
+        'world_data': world_data,
+        'player_position': [player.position.x, player.position.y, player.position.z]
+    }
     with open(filename, 'w') as f:
-        json.dump(world_data, f)
+        json.dump(save_data, f)
 
-def load_world(filename=r'C:\Users\mberr954\Documents\world_save.json'):
+def load_world(filename):
     global world_data
+    destroy_play_menu()
     with open(filename, 'r') as f:
-        world_data = json.load(f)
+        save_data = json.load(f)
+    world_data = save_data['world_data']
+    player_position = save_data.get('player_position', [0,0,0])
     clear_world()
     rebuild_world_from_data()
-
+    player.position = Vec3(*player_position)
+    mouse.locked = True
 
 
 settings_opened = False
@@ -358,7 +370,7 @@ def toggle_mouse_lock():
 pause_menu = Entity(
     parent=camera.ui,
     model='quad',
-    scale=(2, 2, 1),  
+    scale=(2, 2, 1),
     color=color.rgba(0,0,0, 0.5),  
     visible=False  
 )
@@ -428,9 +440,10 @@ def destroy_pause_menu():
     destroy(pause_label)
     destroy(save_button)
     destroy(load_button)
+    destroy(gen_button)
 
 def build_pause_menu():
-    global resume_button, quit_button, pause_label, settings_button, save_button, load_button
+    global resume_button, quit_button, pause_label, settings_button, save_button, load_button, gen_button
     resume_button = Button(
         parent=pause_menu,
         text='Resume',
@@ -444,7 +457,7 @@ def build_pause_menu():
         parent=pause_menu,
         text='Save World',
         color=color.gray,
-        scale=(0.15, 0.02), 
+        scale=(0.15, 0.02),
         position=(0, -0.1),  
         on_click = lambda: save_world()
     )
@@ -456,6 +469,15 @@ def build_pause_menu():
         scale=(0.15, 0.02), 
         position=(0, -0.2),  
         on_click = lambda: load_world()
+    )
+
+    gen_button = Button(
+        parent=pause_menu,
+        text='Generate World Debug',
+        color=color.gray,
+        scale=(0.15, 0.02), 
+        position=(0, -0.25),  
+        on_click = lambda: generate_world()
     )
 
     quit_button = Button(
@@ -483,8 +505,81 @@ def build_pause_menu():
     position=(0, 0.1),            
     )   
 
+def build_main_menu():
+    global mainbackground,titletext,play_button,menu_quit_button
+    mainbackground = Entity(
+    parent=camera.ui,
+    model='quad',
+    texture = 'PyCraft/Textures/menubackground.jpg',
+    scale=(2, 2, -1),  
+    visible=True  
+    )
+    titletext = Entity(
+    parent=camera.ui,
+    model='quad',
+    texture = 'PyCraft/Textures/titlelogo.png',
+    scale=(0.5, 0.2),
+    position=(0,0.25),
+    visible=True  
+    )
+    play_button = Button(
+        parent=camera.ui,
+        text='Play',
+        color=color.gray,
+        scale=(0.25, 0.04),
+        position=(0, 0),  
+        on_click = lambda: open_play_menu()
+    )
+    menu_quit_button = Button(
+        parent=camera.ui,
+        text='Quit',
+        color=color.gray,
+        scale=(0.25, 0.04),
+        position=(0, -0.1),  
+        on_click = application.quit
+    )
 
+def destroy_main_menu():
+    destroy(titletext)
+    destroy(play_button)
+    destroy(menu_quit_button)
 
+def open_play_menu():
+    global file_buttons, createworld_button
+    destroy_main_menu()
+
+    folder_path = r'C:\Users\mberr954\Documents\PyCraft\Worlds'
+    files = os.listdir(folder_path)
+    scroll_container = Entity(parent=camera.ui, position = (0,0.3), scale=(1,1), visible=True)
+    scroll_offset = 0
+
+    file_buttons = []
+    for i, file_name in enumerate(files):
+        worldfilebutton = Button(
+            parent=scroll_container,
+            text=file_name,
+            color=color.gray,
+            scale=(0.25,0.05),
+            position=(0, -i * 0.06),
+            on_click = lambda file_name=file_name: load_world(f'C:\\Users\\mberr954\\Documents\\PyCraft\\Worlds\\{file_name}')
+        )
+        file_buttons.append(worldfilebutton)
+    createworld_button = Button(
+        parent=camera.ui,
+        text='Create World',
+        color=color.gray,
+        scale=(0.25, 0.04),
+        position=(0, -0.15),  
+        on_click = lambda: generate_world()
+    )
+def destroy_play_menu():
+    global file_buttons
+    destroy(mainbackground)
+    destroy(createworld_button)
+    for i in file_buttons:
+        destroy(i)
+    file_buttons = []
+build_main_menu()
 defrot = (0,0,0)
 
 
@@ -583,7 +678,7 @@ def input(key):
             selectedvoxel = Voxel
             selected = 'basic'
             destroy(hand)
-            hand = Entity(model='cube',texture='pycrafttextures/cobblestone.png', color=color.hsv(0, 0, random.uniform(.9, 1.0)), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+            hand = Entity(model='cube',texture='PyCraft/Textures/cobblestone.png', color=color.hsv(0, 0, random.uniform(.9, 1.0)), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
             defrot = hand.rotation
             destroy(selector)
             selector = Button( 
@@ -592,10 +687,11 @@ def input(key):
                     scale=(0.09, 0.08), 
                     )
         if key == '2':
+            print(player.position)
             selectedvoxel = BrownVoxel
             selected = 'dirt'
             destroy(hand)
-            hand = Entity(model='cube',texture='pycrafttextures/default_dirt.png', color=color.hsv(30, 0.5, 0.7), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+            hand = Entity(model='cube',texture='PyCraft/Textures/default_dirt.png', color=color.hsv(30, 0.5, 0.7), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
             defrot = hand.rotation
             destroy(selector)
             selector = Button( 
@@ -615,20 +711,20 @@ def input(key):
             destroy(hand)
             destroy(selector)
             selected = 'ak'
-            hand = Entity(model="ak.obj", scale=(0.5,0.5,0.5), position=(0,0,0), rotation=(180,0,180), parent=camera)
+            hand = Entity(model="PyCraft/Textures/ak.obj", scale=(0.5,0.5,0.5), position=(0,0,0), rotation=(180,0,180), parent=camera)
             defrot = hand.rotation
         if key == '5':
             selectedvoxel = OakPlanksVoxel
             selected = 'oakplanks'
             destroy(hand)
-            hand = Entity(model='cube',texture='pycrafttextures/oak_planks.png', color=color.hsv(0, 0, .9), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+            hand = Entity(model='cube',texture='PyCraft/Textures/oak_planks.png', color=color.hsv(0, 0, .9), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
             defrot = hand.rotation
             destroy(selector)
         if key == '6':
             selectedvoxel = GlassVoxel
             selected = 'glass'
             destroy(hand)
-            hand = Entity(model='cube',texture='pycrafttextures/glass.png', color=color.hsv(0, 0, .9), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+            hand = Entity(model='cube',texture='PyCraft/Textures/glass.png', color=color.hsv(0, 0, .9), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
             defrot = hand.rotation
             destroy(selector)
 
@@ -652,6 +748,6 @@ def update():
 player = FirstPersonController()
 player.height = 1.8
 player.camera_pivot.y = 1.8
-
+mouse.locked = False
 Sky()
 app.run()
