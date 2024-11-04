@@ -12,7 +12,7 @@ import os
 import math
 
 app = Ursina(borderless=False, title='PyCraft', icon='PyCraft/pycraftlogo.ico')
-game_version = '1.2'
+game_version = '1.3'
 world_data = []
 debugOpen = False
 window.fullscreen = False
@@ -21,6 +21,7 @@ fov_slider = None
 saved_world_name = None
 holding_block = False
 replacingslot = False
+pause_menu_open = False
 # Define a Voxel class.
 # By setting the parent to scene and the model to 'cube' it becomes a 3d button.
 class Voxel(Button):
@@ -159,6 +160,63 @@ class BrownVoxel(Button):
         b = min(base_color.b + 0.1, 1.0)
         self.highlight_color = color.rgb(r, g, b)
 
+class WhiteWoolVoxel(Button):
+    block_texture='PyCraft/Textures/white_wool.png'
+    block_icon = 'PyCraft/Textures/whitewoolblock.png'
+    block_color = color.hsv(0, 0, .9)
+    def __init__(self, position=(0,0,0)):
+        base_color = color.hsv(0, 0, .9)
+        super().__init__(parent=scene,
+            position=position,
+            model='cube',
+            origin_y=.5,
+            texture='PyCraft/Textures/white_wool.png',
+            color=base_color,
+            isblock = True
+        )
+        r = min(base_color.r + 0.1, 1.0)
+        g = min(base_color.g + 0.1, 1.0)
+        b = min(base_color.b + 0.1, 1.0)
+        self.highlight_color = color.rgb(r, g, b)
+
+class BlackWoolVoxel(Button):
+    block_texture='PyCraft/Textures/black_wool.png'
+    block_icon = 'PyCraft/Textures/blackwoolblock.png'
+    block_color = color.hsv(0, 0, .9)
+    def __init__(self, position=(0,0,0)):
+        base_color = color.hsv(0, 0, .9)
+        super().__init__(parent=scene,
+            position=position,
+            model='cube',
+            origin_y=.5,
+            texture='PyCraft/Textures/black_wool.png',
+            color=base_color,
+            isblock = True
+        )
+        r = min(base_color.r + 0.1, 1.0)
+        g = min(base_color.g + 0.1, 1.0)
+        b = min(base_color.b + 0.1, 1.0)
+        self.highlight_color = color.rgb(r, g, b)
+
+class RedWoolVoxel(Button):
+    block_texture='PyCraft/Textures/red_wool.png'
+    block_icon = 'PyCraft/Textures/redwoolblock.png'
+    block_color = color.hsv(0, 0, .9)
+    def __init__(self, position=(0,0,0)):
+        base_color = color.hsv(0, 0, .9)
+        super().__init__(parent=scene,
+            position=position,
+            model='cube',
+            origin_y=.5,
+            texture='PyCraft/Textures/red_wool.png',
+            color=base_color,
+            isblock = True
+        )
+        r = min(base_color.r + 0.1, 1.0)
+        g = min(base_color.g + 0.1, 1.0)
+        b = min(base_color.b + 0.1, 1.0)
+        self.highlight_color = color.rgb(r, g, b)
+
 
 class DoorVoxel(Button):
     def __init__(self, position=(0,0,0)):
@@ -201,36 +259,51 @@ class Bedrock(Button):
 
 inventory_opened = False
 inventory_blocks_pg1 = [
-    {'voxel_class': Voxel, 'texture': 'PyCraft/Textures/cobblestoneblock.png', 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
-    {'voxel_class': BrownVoxel, 'texture': 'PyCraft/Textures/dirtblock.png', 'color': color.hsv(30, 0.5, 0.7), 'name': 'Dirt'},
-    {'voxel_class': GroundVoxel, 'texture': 'PyCraft/Textures/grassblock.png', 'color': color.hsv(120, 0.75, 0.7), 'name': 'Grass'},
-    {'voxel_class': OakPlanksVoxel, 'texture': 'PyCraft/Textures/oakplanksblock.png', 'color': color.hsv(0,0,0.9), 'name': 'Oak Planks'},
-    {'voxel_class': GlassVoxel, 'texture': 'PyCraft/Textures/glassblock.png', 'color': color.hsv(0,0,0.9), 'name': 'Glass'},
-    {'voxel_class': IronOreVoxel, 'texture': 'PyCraft/Textures/ironoreblock.png', 'color': color.hsv(0,0,0.9), 'name': 'Iron Ore'},
-    {'voxel_class': CoalOreVoxel, 'texture': 'PyCraft/Textures/coaloreblock.png', 'color': color.hsv(0,0,0.9), 'name': 'Coal Ore'},
-    {'voxel_class': Bedrock, 'texture': 'PyCraft/Textures/bedrockblock.png', 'color': color.hsv(0,0,1), 'name': 'Bedrock'},
-    {'voxel_class': Voxel, 'texture': 'PyCraft/Textures/cobblestoneblock.png', 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
-    {'voxel_class': Voxel, 'texture': 'PyCraft/Textures/cobblestoneblock.png', 'color': color.hsv(0,0,0.9), 'name': 'test1'},
-    {'voxel_class': BrownVoxel, 'texture': 'PyCraft/Textures/dirtblock.png', 'color': color.hsv(30, 0.5, 0.7), 'name': 'test2'},
-    {'voxel_class': GroundVoxel, 'texture': 'PyCraft/Textures/grassblock.png', 'color': color.hsv(120, 0.75, 0.7), 'name': 'test3'},
-    {'voxel_class': OakPlanksVoxel, 'texture': 'PyCraft/Textures/oakplanksblock.png', 'color': color.hsv(0,0,0.9), 'name': 'test4'},
-    {'voxel_class': GlassVoxel, 'texture': 'PyCraft/Textures/glassblock.png', 'color': color.hsv(0,0,0.9), 'name': 'test5'},
-    {'voxel_class': IronOreVoxel, 'texture': 'PyCraft/Textures/ironoreblock.png', 'color': color.hsv(0,0,0.9), 'name': 'test6'},
-    {'voxel_class': CoalOreVoxel, 'texture': 'PyCraft/Textures/coaloreblock.png', 'color': color.hsv(0,0,0.9), 'name': 'test7'},
-    {'voxel_class': Bedrock, 'texture': 'PyCraft/Textures/bedrockblock.png', 'color': color.hsv(0,0,1), 'name': 'test8'},
-    {'voxel_class': Voxel, 'texture': 'PyCraft/Textures/cobblestoneblock.png', 'color': color.hsv(0,0,0.9), 'name': 'test9'},
-    {'voxel_class': Voxel, 'texture': 'PyCraft/Textures/cobblestoneblock.png', 'color': color.hsv(0,0,0.9), 'name': 'test1'},
-    {'voxel_class': BrownVoxel, 'texture': 'PyCraft/Textures/dirtblock.png', 'color': color.hsv(30, 0.5, 0.7), 'name': 'test2'},
-    {'voxel_class': GroundVoxel, 'texture': 'PyCraft/Textures/grassblock.png', 'color': color.hsv(120, 0.75, 0.7), 'name': 'test3'},
-    {'voxel_class': OakPlanksVoxel, 'texture': 'PyCraft/Textures/oakplanksblock.png', 'color': color.hsv(0,0,0.9), 'name': 'test4'},
-    {'voxel_class': GlassVoxel, 'texture': 'PyCraft/Textures/glassblock.png', 'color': color.hsv(0,0,0.9), 'name': 'test5'},
-    {'voxel_class': IronOreVoxel, 'texture': 'PyCraft/Textures/ironoreblock.png', 'color': color.hsv(0,0,0.9), 'name': 'test6'},
-    {'voxel_class': CoalOreVoxel, 'texture': 'PyCraft/Textures/coaloreblock.png', 'color': color.hsv(0,0,0.9), 'name': 'test7'},
-    {'voxel_class': Bedrock, 'texture': 'PyCraft/Textures/bedrockblock.png', 'color': color.hsv(0,0,1), 'name': 'test8'},
-    {'voxel_class': Voxel, 'texture': 'PyCraft/Textures/cobblestoneblock.png', 'color': color.hsv(0,0,0.9), 'name': 'test9'},
+    {'voxel_class': Voxel, 'texture': Voxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
+    {'voxel_class': BrownVoxel, 'texture': BrownVoxel.block_icon, 'color': color.hsv(30, 0.5, 0.7), 'name': 'Dirt'},
+    {'voxel_class': GroundVoxel, 'texture': GroundVoxel.block_icon, 'color': color.hsv(120, 0.75, 0.7), 'name': 'Grass'},
+    {'voxel_class': OakPlanksVoxel, 'texture': OakPlanksVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Oak Planks'},
+    {'voxel_class': GlassVoxel, 'texture': GlassVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Glass'},
+    {'voxel_class': IronOreVoxel, 'texture': IronOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Iron Ore'},
+    {'voxel_class': CoalOreVoxel, 'texture': CoalOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Coal Ore'},
+    {'voxel_class': Bedrock, 'texture': Bedrock.block_icon, 'color': color.hsv(0,0,1), 'name': 'Bedrock'},
+    {'voxel_class': Voxel, 'texture': Voxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
+    {'voxel_class': Voxel, 'texture': Voxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
+    {'voxel_class': BrownVoxel, 'texture': BrownVoxel.block_icon, 'color': color.hsv(30, 0.5, 0.7), 'name': 'Dirt'},
+    {'voxel_class': GroundVoxel, 'texture': GroundVoxel.block_icon, 'color': color.hsv(120, 0.75, 0.7), 'name': 'Grass'},
+    {'voxel_class': OakPlanksVoxel, 'texture': OakPlanksVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Oak Planks'},
+    {'voxel_class': GlassVoxel, 'texture': GlassVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Glass'},
+    {'voxel_class': IronOreVoxel, 'texture': IronOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Iron Ore'},
+    {'voxel_class': CoalOreVoxel, 'texture': CoalOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Coal Ore'},
+    {'voxel_class': Bedrock, 'texture': Bedrock.block_icon, 'color': color.hsv(0,0,1), 'name': 'Bedrock'},
+    {'voxel_class': Voxel, 'texture': Voxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
+    {'voxel_class': Voxel, 'texture': Voxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
+    {'voxel_class': BrownVoxel, 'texture': BrownVoxel.block_icon, 'color': color.hsv(30, 0.5, 0.7), 'name': 'Dirt'},
+    {'voxel_class': GroundVoxel, 'texture': GroundVoxel.block_icon, 'color': color.hsv(120, 0.75, 0.7), 'name': 'Grass'},
+    {'voxel_class': OakPlanksVoxel, 'texture': OakPlanksVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Oak Planks'},
+    {'voxel_class': GlassVoxel, 'texture': GlassVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Glass'},
+    {'voxel_class': IronOreVoxel, 'texture': IronOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Iron Ore'},
+    {'voxel_class': CoalOreVoxel, 'texture': CoalOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Coal Ore'},
+    {'voxel_class': Bedrock, 'texture': Bedrock.block_icon, 'color': color.hsv(0,0,1), 'name': 'Bedrock'},
+    {'voxel_class': Voxel, 'texture': Voxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
+
+]
+inventory_blocks_pg2 = [
+    {'voxel_class': WhiteWoolVoxel, 'texture': WhiteWoolVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'White Wool'},
+    {'voxel_class': BlackWoolVoxel, 'texture': BlackWoolVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Black Wool'},
+    {'voxel_class': RedWoolVoxel, 'texture': RedWoolVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Red Wool'},
 
 ]
 
+currentpagedata = {
+    'page': inventory_blocks_pg1,
+    'pagenumber': '1',
+    'pagelabel': 'Base Blocks'
+    }
+pagelabels = {
+    '1': 'Base Blocks',
+    '2': 'Wools'
+}
 def generate_world(worldseed):
     global worlddimensions, min_y, seedvalue, worldver
     clear_world()
@@ -378,7 +451,7 @@ def build_hotbar():
                     position=(-0.225, -0.45, -1), 
                     scale=(0.045, 0.045),
                     hand_color = color.hsv(0, 0, .9),
-                    on_click = lambda: equip_block(slot1),
+                    on_click = lambda: equip_block(slot1) if holding_block else swap_block(slot1),
                     equipped=Voxel 
                     )
     slot2 = Button( 
@@ -387,7 +460,7 @@ def build_hotbar():
                     position=(-0.168, -0.45, -1), 
                     scale=(0.045, 0.045),
                     hand_color = color.hsv(30, 0.5, 0.7),
-                    on_click = lambda: equip_block(slot2),
+                    on_click = lambda: equip_block(slot2) if holding_block else swap_block(slot2),
                     equipped=BrownVoxel
                     )
     slot3 = Button( 
@@ -395,7 +468,7 @@ def build_hotbar():
                     position=(-0.114, -0.45, -1), 
                     scale=(0.045, 0.045),
                     hand_color = color.hsv(30, 0.4, 0.8),
-                    on_click = lambda: equip_block(slot3),
+                    on_click = lambda: equip_block(slot3) if holding_block else swap_block(slot3),
                     visible=False,
                     equipped=False
                     )
@@ -404,7 +477,7 @@ def build_hotbar():
                     position=(-0.057, -0.45, -1), 
                     scale=(0.045, 0.045),
                     hand_color = color.hsv(0,0,.9),
-                    on_click = lambda: equip_block(slot4),
+                    on_click = lambda: equip_block(slot4) if holding_block else swap_block(slot4),
                     equipped='gun'
                     )
     slot5 = Button( 
@@ -413,7 +486,7 @@ def build_hotbar():
                     position=(0, -0.45, -1), 
                     scale=(0.045, 0.045),
                     hand_color = color.hsv(0,0,.9),
-                    on_click = lambda: equip_block(slot5),
+                    on_click = lambda: equip_block(slot5) if holding_block else swap_block(slot5),
                     equipped=OakPlanksVoxel
                     )
     slot6 = Button( 
@@ -422,7 +495,7 @@ def build_hotbar():
                     position=(0.055, -0.45, -1), 
                     scale=(0.045, 0.045),
                     hand_color = color.hsv(0,0,.9),
-                    on_click = lambda: equip_block(slot6),
+                    on_click = lambda: equip_block(slot6) if holding_block else swap_block(slot6),
                     equipped=GlassVoxel
                     )
     slot7 = Button( 
@@ -487,6 +560,12 @@ def rebuild_world_from_data():
             OakPlanksVoxel(position=position)
         elif block_type == 'GlassVoxel':
             GlassVoxel(position=position)
+        elif block_type == 'WhiteWoolVoxel':
+            WhiteWoolVoxel(position=position)
+        elif block_type == 'BlackWoolVoxel':
+            BlackWoolVoxel(position=position)
+        elif block_type == 'RedWoolVoxel':
+            RedWoolVoxel(position=position)
         
 
 def save_world(filename=r'C:\Users\mberr954\Documents\PyCraft\Worlds\world_save.json'):
@@ -529,12 +608,13 @@ def load_world(filename):
 
 settings_opened = False
 def toggle_mouse_lock():
-    global settings_opened
+    global settings_opened, pause_menu_open
     if mouse.locked:
         mouse.locked = False
         mouse.visible = True
         pause_menu.visible = True
         build_pause_menu()
+        pause_menu_open = True
     else:
         mouse.locked = True
         mouse.visible = False
@@ -542,6 +622,7 @@ def toggle_mouse_lock():
         if settings_opened:
             close_settings()
         destroy_pause_menu()
+        pause_menu_open = False
 pause_menu = Entity(
     parent=camera.ui,
     model='quad',
@@ -810,10 +891,10 @@ def toggle_inventory():
     if inventory_opened:
         close_inventory()
     else:
-        open_inventory()
+        open_inventory(currentpagedata['page'], currentpagedata['pagenumber'], currentpagedata['pagelabel'])
 
-def open_inventory():
-    global inventory_opened, inventory_panel, block_buttons
+def open_inventory(pg, pgn, pgl):
+    global inventory_opened, inventory_panel, block_buttons, page_number, next_arrow, previous_arrow, page_label
     inventory_opened = True
     mouse.locked = False
     mouse.visible = True
@@ -830,13 +911,13 @@ def open_inventory():
 
     block_buttons = []
     num_columns = 9
-    num_rows = math.ceil(len(inventory_blocks_pg1) / num_columns)
+    num_rows = math.ceil(len(pg) / num_columns)
     button_scale = (0.1,0.18)
     spacing = 0.108
 
     row_y_positions = [0.265, 0.175, 0.085]
 
-    for index,block in enumerate(inventory_blocks_pg1):
+    for index,block in enumerate(pg):
         col = index % num_columns
         row = index // num_columns
 
@@ -857,6 +938,64 @@ def open_inventory():
         )
         block_buttons.append(block_button)
 
+    page_number = Text(
+    parent=inventory_panel,  
+    text=pgn,   
+    origin=(0, 0),      
+    scale=(3,5),            
+    color=color.black,   
+    position=(0, -0.39, -1),            
+    )
+    page_label = Text(
+    parent=inventory_panel,  
+    text=pgl,
+    origin=(0, 0),      
+    scale=(2,4),            
+    color=color.black,   
+    position=(0.3, 0.42, -1),            
+    )
+    next_arrow = Button(
+            parent=inventory_panel,
+            texture='PyCraft/Textures/nextarrow.png',
+            color=color.gray,
+            scale=(0.09, 0.15),
+            position=(0.429, -0.375, -1),
+            on_click = lambda: next_inventory_page()
+        )
+    previous_arrow = Button(
+            parent=inventory_panel,
+            texture='PyCraft/Textures/backarrow.png',
+            color=color.gray,
+            scale=(0.09, 0.15),
+            position=(-0.429, -0.375, -1),
+            on_click = lambda: previous_inventory_page()
+        )
+def next_inventory_page():
+    global page_number, currentpagedata, page_label
+    nextpages = {
+        '1': inventory_blocks_pg2
+    }
+    if page_number.text in nextpages:
+        clear_inventory_page()
+        build_new_page(nextpages.get(page_number.text))
+        currentpagedata['page'] = nextpages.get(page_number.text)
+        page_number.text = str(int(page_number.text) + 1)
+        page_label.text = pagelabels[page_number.text]
+        currentpagedata['pagenumber'] = page_number.text
+        currentpagedata['pagelabel'] = pagelabels[page_number.text]
+def previous_inventory_page():
+    global page_number, currentpagedata, page_label
+    previouspages = {
+        '2': inventory_blocks_pg1
+    }
+    if page_number.text in previouspages:
+        clear_inventory_page()
+        build_new_page(previouspages.get(page_number.text))
+        currentpagedata['page'] = previouspages.get(page_number.text)
+        page_number.text = str(int(page_number.text) - 1)
+        page_label.text = pagelabels[page_number.text]
+        currentpagedata['pagenumber'] = page_number.text
+        currentpagedata['pagelabel'] = pagelabels[page_number.text]
 def hold_block(block):
     global selectedvoxel,selected,hand,defrot,holding_block,block_drag,block_held
     if holding_block:
@@ -880,6 +1019,8 @@ def equip_block(slot):
         slot.visible = True
         destroy(block_drag)
         holding_block = False
+        if slot == slotselected:
+            update_equipped_slot(slot)
     if holding_block and replacingslot:
         replacingslot.texture = slot.texture
         replacingslot.equipped = slot.equipped
@@ -890,20 +1031,26 @@ def equip_block(slot):
         slot.hand_color=block_drag.blockcolor
         slot.visible = True
         destroy(block_drag)
+        if slot == slotselected or replacingslot == slotselected:
+            update_equipped_slot(slotselected)
+        replacingslot = False
         holding_block = False
-    else:
-        block_drag = Entity(
-            parent=camera.ui,
-            model='quad',
-            texture=slot.texture,
-            blockcolor = slot.hand_color,
-            scale=(0.05,0.05),
-            color=color.white,
-        )
-        replacingslot = slot
-        block_held = slot.equipped
-        holding_block = True
 
+def swap_block(slot):
+    global selectedvoxel,selected,hand,defrot,holding_block,block_drag,block_held,slot1,slot2,slot3,slot4,slot5,slot6,slot7,slot8,slot9, replacingslot
+
+    block_drag = Entity(
+        parent=camera.ui,
+        model='quad',
+        texture=slot.texture,
+        blockcolor = slot.hand_color,
+        scale=(0.05,0.05),
+        color=color.white,
+    )
+    replacingslot = slot
+    slot.visible = False
+    block_held = slot.equipped
+    holding_block = True
 def close_inventory():
     global inventory_opened, inventory_panel, block_buttons, holding_block
     inventory_opened = False
@@ -916,6 +1063,71 @@ def close_inventory():
     for btn in block_buttons:
         destroy(btn)
     block_buttons = []
+
+def clear_inventory_page():
+    global block_buttons
+    for btn in block_buttons:
+        destroy(btn)
+    block_buttons = []
+def build_new_page(pg):
+    global block_buttons
+    block_buttons = []
+    num_columns = 9
+    num_rows = math.ceil(len(pg) / num_columns)
+    button_scale = (0.1,0.18)
+    spacing = 0.108
+
+    row_y_positions = [0.265, 0.175, 0.085]
+
+    for index,block in enumerate(pg):
+        col = index % num_columns
+        row = index // num_columns
+
+        position = Vec3(
+            -0.43 + col * spacing,
+            row_y_positions[row] - row * spacing,
+            -1
+        )
+
+        block_button = Button(
+            parent=inventory_panel,
+            model='quad',
+            texture=block['texture'],
+            scale=button_scale,
+            position=position,
+            color=color.white,
+            on_click=lambda b=block: hold_block(b)
+        )
+        block_buttons.append(block_button)
+def update_equipped_slot(s):
+    global selectedvoxel, selector, hand, defrot, selected, slotselected
+    if s.equipped and s.equipped != 'gun':
+        selectedvoxel = s.equipped
+        block_texture = selectedvoxel.block_texture
+        selected = 'block'
+    elif s.equipped == 'gun':
+        selectedvoxel = None
+        selected = 'ak'
+    else:
+        selectedvoxel = None
+        block_texture = None
+        selected = 'openhand'
+    slotselected = s
+    destroy(hand)
+    if selectedvoxel:
+        hand = Entity(model='cube',texture=block_texture, color=s.hand_color, scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+    elif not selectedvoxel and selected == 'ak':
+        hand = Entity(model="PyCraft/Textures/ak.obj", scale=(0.5,0.5,0.5), position=(0,0,0), rotation=(180,0,180), parent=camera)
+    else:
+        hand = Entity(model='cube', color=color.hsv(30, 0.4, 0.8), scale=(0.2,0.7,0.2), rotation=(45,0,0), position=(0,0,0), parent=camera)
+    defrot = hand.rotation
+    destroy(selector)
+    selector = Button( 
+        color=color.rgb(0, 0, 0), 
+        position=(s.position.x, s.position.y, 0), 
+        scale=(0.045, 0.045),
+        visible=True
+        )
     
 build_main_menu()
 defrot = (0,0,0)
@@ -928,7 +1140,7 @@ def input(key):
     global selectedvoxel, selector, hand, defrot, selected, world_data, blockcopied, slotselected
     if key == 'escape' and not main_menu_open and not inventory_opened:
             toggle_mouse_lock()
-    if key == 'e' and not main_menu_open:
+    if key == 'e' and not main_menu_open and not pause_menu_open:
         toggle_inventory()
         return
     if mouse.locked:
