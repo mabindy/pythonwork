@@ -14,7 +14,7 @@ import importlib
 import importlib.util
 import sys
 app = Ursina(borderless=False, title='PyCraft', icon='PyCraft/pycraftlogo.ico')
-game_version = '1.3'
+game_version = '1.4 indev'
 world_data = []
 debugOpen = False
 window.fullscreen = False
@@ -104,6 +104,44 @@ class OakPlanksVoxel(Button):
         b = min(base_color.b + 0.1, 1.0)
         self.highlight_color = color.rgb(r, g, b)
 block_class_mapping['OakPlanksVoxel'] = OakPlanksVoxel
+class OakLogVoxel(Button):
+    block_texture='PyCraft/Textures/oaklog.png'
+    block_icon = 'PyCraft/Textures/oaklogblock.png'
+    block_color = color.hsv(0, 0, .9)
+    def __init__(self, position=(0,0,0)):
+        base_color = color.hsv(0, 0, .9)
+        super().__init__(parent=scene,
+            position=position,
+            model='cube',
+            origin_y=.5,
+            texture='PyCraft/Textures/oaklog.png',
+            color=base_color,
+            isblock = True
+        )
+        r = min(base_color.r + 0.1, 1.0)
+        g = min(base_color.g + 0.1, 1.0)
+        b = min(base_color.b + 0.1, 1.0)
+        self.highlight_color = color.rgb(r, g, b)
+block_class_mapping['OakLogVoxel'] = OakLogVoxel
+class TreeLeavesVoxel(Button):
+    block_texture='PyCraft/Textures/treeleaves.png'
+    block_icon = 'PyCraft/Textures/oaklogblock.png'
+    block_color = color.hsv(0, 0, .9)
+    def __init__(self, position=(0,0,0)):
+        base_color = color.hsv(0, 0, .9)
+        super().__init__(parent=scene,
+            position=position,
+            model='cube',
+            origin_y=.5,
+            texture='PyCraft/Textures/treeleaves.png',
+            color=base_color,
+            isblock = True
+        )
+        r = min(base_color.r + 0.1, 1.0)
+        g = min(base_color.g + 0.1, 1.0)
+        b = min(base_color.b + 0.1, 1.0)
+        self.highlight_color = color.rgb(r, g, b)
+block_class_mapping['TreeLeavesVoxel'] = TreeLeavesVoxel
 class GlassVoxel(Button):
     block_texture='PyCraft/Textures/glass.png'
     block_icon = 'PyCraft/Textures/glassblock.png'
@@ -261,6 +299,13 @@ class Bedrock(Button):
         self.highlight_color = color.rgb(r, g, b)
         self.destroyable = False
 block_class_mapping['Bedrock'] = Bedrock
+worldgenerationvoxels = {
+    'surfacevoxel': GroundVoxel,
+    'minvoxel': Bedrock,
+    'undersurfacevoxel': BrownVoxel,
+    'deepvoxel': Voxel,
+}
+
 
 inventory_opened = False
 inventory_blocks_pg1 = [
@@ -300,18 +345,18 @@ inventory_blocks_pg2 = [
 
 ]
 
-pages = [
-    inventory_blocks_pg1,
-    inventory_blocks_pg2
-]
+pages = {
+    1: inventory_blocks_pg1,
+    2: inventory_blocks_pg2,
+}
 currentpagedata = {
     'page': inventory_blocks_pg1,
     'pagenumber': '1',
-    'pagelabel': 'Base Blocks'
+    'pagelabel': 'Base Blocks',
     }
 pagelabels = {
     '1': 'Base Blocks',
-    '2': 'Wools'
+    '2': 'Wools',
 }
 
 
@@ -319,6 +364,10 @@ game_api = {
     'inventory_blocks_pg1': inventory_blocks_pg1,
     'inventory_blocks_pg2': inventory_blocks_pg2,
     'block_class_mapping': block_class_mapping,
+    'pages': pages,
+    'pagelabels': pagelabels,
+    'worldgenerationvoxels': worldgenerationvoxels,
+
 }
 
 
@@ -389,6 +438,7 @@ mod_states = load_mod_states(mods_folder)
 
 def generate_world(worldseed):
     global worlddimensions, min_y, seedvalue, worldver, inventory_blocks_pg1, inventory_blocks_pg2
+    load_mods(mod_states, mods_folder, game_api)
     clear_world()
     worldver = game_version
     try:
@@ -407,14 +457,36 @@ def generate_world(worldseed):
             for y in range(min_y, surface_y + 1):
                 position = (x, y, z)
                 if y == surface_y:
-                    voxel = GroundVoxel(position=position)
-                    block_type = 'GroundVoxel'
+                    voxel = worldgenerationvoxels['surfacevoxel'](position=position)
+                    block_type = (type(voxel).__name__)
+                    treegenerator = random.randint(0,50)
+                    if treegenerator == 5:
+                        voxel = OakLogVoxel(position=(x,y+1,z))
+                        voxel = OakLogVoxel(position=(x,y+2,z))
+                        voxel = OakLogVoxel(position=(x,y+3,z))
+                        voxel = TreeLeavesVoxel(position=(x,y+3,z+1))
+                        voxel = TreeLeavesVoxel(position=(x+1,y+3,z+1))
+                        voxel = TreeLeavesVoxel(position=(x-1,y+3,z+1))
+                        voxel = TreeLeavesVoxel(position=(x,y+3,z-1))
+                        voxel = TreeLeavesVoxel(position=(x+1,y+3,z-1))
+                        voxel = TreeLeavesVoxel(position=(x-1,y+3,z-1))
+                        voxel = TreeLeavesVoxel(position=(x+1,y+3,z))
+                        voxel = TreeLeavesVoxel(position=(x-1,y+3,z))
+                        voxel = TreeLeavesVoxel(position=(x,y+4,z+1))
+                        voxel = TreeLeavesVoxel(position=(x+1,y+4,z+1))
+                        voxel = TreeLeavesVoxel(position=(x-1,y+4,z+1))
+                        voxel = TreeLeavesVoxel(position=(x,y+4,z-1))
+                        voxel = TreeLeavesVoxel(position=(x+1,y+4,z-1))
+                        voxel = TreeLeavesVoxel(position=(x-1,y+4,z-1))
+                        voxel = TreeLeavesVoxel(position=(x+1,y+4,z))
+                        voxel = TreeLeavesVoxel(position=(x-1,y+4,z))
+                        voxel = TreeLeavesVoxel(position=(x,y+5,z))
                 elif y == min_y:
-                    voxel = Bedrock(position=position)
-                    block_type = 'Bedrock'
+                    voxel = worldgenerationvoxels['minvoxel'](position=position)
+                    block_type = (type(voxel).__name__)
                 elif y > surface_y - 3:
-                    voxel = BrownVoxel(position=position)
-                    block_type = 'BrownVoxel'
+                    voxel = worldgenerationvoxels['undersurfacevoxel'](position=position)
+                    block_type = (type(voxel).__name__)
                 else:
                     oregenerator = random.randint(0,20)
                     if oregenerator == 5 and y < surface_y - 10:
@@ -424,14 +496,13 @@ def generate_world(worldseed):
                         voxel = CoalOreVoxel(position=position)
                         block_type = 'CoalOreVoxel'
                     else:
-                        voxel = Voxel(position=position)
-                        block_type = 'Voxel'
+                        voxel = worldgenerationvoxels['deepvoxel'](position=position)
+                        block_type = (type(voxel).__name__)
                 world_data.append({'position': [x, y, z], 'block_type': block_type})
     build_barriers(worlddimensions, min_y)
     player.position = Vec3(*[0,0,0])
     destroy_play_menu()
     build_hotbar()
-    load_mods(mod_states, mods_folder, game_api)
     mouse.locked = True
 
 def build_barriers(dimensions, miny):
@@ -1133,26 +1204,20 @@ def open_inventory(pg, pgn, pgl):
         )
 def next_inventory_page():
     global page_number, currentpagedata, page_label
-    nextpages = {
-        '1': inventory_blocks_pg2
-    }
-    if page_number.text in nextpages:
+    if int(page_number.text) + 1 in pages:
         clear_inventory_page()
-        build_new_page(nextpages.get(page_number.text))
-        currentpagedata['page'] = nextpages.get(page_number.text)
+        build_new_page(pages.get(int(page_number.text) + 1))
+        currentpagedata['page'] = pages.get(int(page_number.text) + 1)
         page_number.text = str(int(page_number.text) + 1)
         page_label.text = pagelabels[page_number.text]
         currentpagedata['pagenumber'] = page_number.text
         currentpagedata['pagelabel'] = pagelabels[page_number.text]
 def previous_inventory_page():
     global page_number, currentpagedata, page_label
-    previouspages = {
-        '2': inventory_blocks_pg1
-    }
-    if page_number.text in previouspages:
+    if int(page_number.text) - 1 in pages:
         clear_inventory_page()
-        build_new_page(previouspages.get(page_number.text))
-        currentpagedata['page'] = previouspages.get(page_number.text)
+        build_new_page(pages.get(int(page_number.text) - 1))
+        currentpagedata['page'] = pages.get(int(page_number.text) - 1)
         page_number.text = str(int(page_number.text) - 1)
         page_label.text = pagelabels[page_number.text]
         currentpagedata['pagenumber'] = page_number.text
@@ -1400,10 +1465,12 @@ def input(key):
                         
                 invoke(hand.animate_rotation, defrot, duration=0.2, curve=curve.in_out_quad, delay=0.2)
         if key == 'f3':
-            global debugOpen, worldversion, seedlabel
+            global debugOpen, worldversion, seedlabel, modslist
+            loaded_mods = [i for i in mod_states if mod_states[i]]
             if debugOpen:
                 destroy(worldversion)
                 destroy(seedlabel)
+                destroy(modslist)
                 debugOpen = False
             else:
                 worldversion = Text(
@@ -1421,6 +1488,14 @@ def input(key):
                 scale=1,            
                 color=color.white,   
                 position=(-0.75, 0.43),            
+                )
+                modslist = Text(
+                parent=camera.ui,  
+                text=f'Mods: {loaded_mods}',   
+                origin=(0, 0),      
+                scale=1,            
+                color=color.white,   
+                position=(-0.5, 0.39),            
                 )
                 debugOpen = True
         if key == '1':
