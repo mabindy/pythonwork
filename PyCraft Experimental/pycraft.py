@@ -6,6 +6,7 @@ from perlin_noise import PerlinNoise
 from ursina.collider import BoxCollider
 from ursina.texture_importer import load_texture
 from ursina import InputField
+from ursina import invoke
 import random
 import json
 import os
@@ -13,8 +14,10 @@ import math
 import importlib
 import importlib.util
 import sys
+from datetime import datetime
+current_datetime = datetime.now()
 app = Ursina(borderless=False, title='PyCraft', icon='PyCraft/pycraftlogo.ico')
-game_version = '1.4 indev'
+game_version = '1.5 indev'
 world_data = []
 debugOpen = False
 window.fullscreen = False
@@ -449,7 +452,7 @@ def generate_world(worldseed):
     noise = PerlinNoise (octaves=3, seed=worldseed)
     seedvalue = worldseed
     min_y = -10
-    worlddimensions = 10 #World dimensions are twice this number 
+    worlddimensions = 2 #World dimensions are twice this number 
     for z in range(-worlddimensions,worlddimensions):
         for x in range(-worlddimensions,worlddimensions):
             surface_y = noise([x * .02,z * .02])
@@ -716,6 +719,7 @@ def save_world(filename=r'C:\Users\mberr954\Documents\PyCraft\Worlds\world_save.
         'player_position': [player.position.x, player.position.y, player.position.z],
         'world_size': [worlddimensions, min_y],
         'world_version': game_version,
+        'last_save_date': f'{current_datetime.date()}'
     }
     if world_mods != []:
         save_data['world_mods'] = world_mods
@@ -756,7 +760,13 @@ def load_world(filename):
     player.position = Vec3(*player_position)
     mouse.locked = True
 
+def get_world_timesaved(filename):
+    with open(filename, 'r') as f:
+        save_data = json.load(f)
+    lasttimesave = save_data.get('last_save_date', 'Unknown')
+    return lasttimesave
 
+print(get_world_timesaved('Documents/PyCraft/Worlds/datetime test.json'))
 settings_opened = False
 def toggle_mouse_lock():
     global settings_opened, pause_menu_open
@@ -1071,15 +1081,40 @@ def open_play_menu():
 
     file_buttons = []
     for i, file_name in enumerate(files):
+        filepath = f'Documents/PyCraft/Worlds/{file_name}'
         worldfilebutton = Button(
             parent=scroll_container,
             text=file_name,
             color=color.gray,
             scale=(0.25,0.05),
-            position=(0, -i * 0.06),
+            position=(-0.25, (-i * 0.06) + 0.1, -2),
             on_click = lambda file_name=file_name: load_world(f'C:\\Users\\mberr954\\Documents\\PyCraft\\Worlds\\{file_name}')
         )
+        world_date = Text(
+            parent=scroll_container,
+            text= get_world_timesaved(filepath),
+            scale=(1,1),
+            position=(-0.05, (-i * 0.06) + 0.11, -2)
+        )
+        worlddeletebutton = Button(
+            parent=scroll_container,
+            text='Delete',
+            color=color.red,
+            scale=(0.15,0.05),
+            position=(0.25, (-i * 0.06) + 0.1, -2),
+            on_click = lambda file_name=file_name: delete_world(f'Documents/PyCraft/Worlds/{file_name}')
+        )
         file_buttons.append(worldfilebutton)
+        file_buttons.append(worlddeletebutton)
+        file_buttons.append(world_date)
+    worldselectbackground = Entity(
+            parent=scroll_container,
+            model='quad',
+            color=color.rgba(0, 0, 0, 0.7),
+            scale=(0.80,0.5),
+            position=(0, -0.1, -1.8)
+        )
+    file_buttons.append(worldselectbackground)
     createworld_button = Button(
         parent=camera.ui,
         text='Create World',
@@ -1117,7 +1152,15 @@ def destroy_play_menu():
     file_buttons = []
     play_menu_open = False
     main_menu_open = False
-
+def delete_world(filepath):
+    global file_buttons
+    os.remove(filepath)
+    for i in file_buttons:
+        destroy(i)
+    destroy(createworld_button)
+    destroy(worldseedinput)
+    destroy(returntomenu_button)
+    open_play_menu()
 def toggle_inventory():
     global inventory_opened
     if inventory_opened:
@@ -1670,6 +1713,119 @@ def input(key):
 
 issprinting = False
 iscrouching = False
+
+from ursina import *
+
+class CustomFirstPersonController(Entity):
+    def __init__(self, **kwargs):
+        self.cursor = Entity(parent=camera.ui, model='quad', color=color.pink, scale=.008, rotation_z=45)
+        super().__init__()
+        self.speed = 5
+        self.height = 2
+        self.camera_pivot = Entity(parent=self, y=self.height)
+
+        camera.parent = self.camera_pivot
+        camera.position = (0,0,0)
+        camera.rotation = (0,0,0)
+        camera.fov = 90
+        mouse.locked = True
+        self.mouse_sensitivity = Vec2(40, 40)
+
+        self.gravity = 25
+        self.vertical_velocity = 0
+        self.grounded = False
+        self.jump_speed = 9  # Adjusted jump speed
+        self.jumping = False
+
+        self.traverse_target = scene     # by default, it will collide with everything. change this to change the raycasts' traverse targets.
+        self.ignore_list = [self, ]
+        self.on_destroy = self.on_disable
+
+        for key, value in kwargs.items():
+            setattr(self, key ,value)
+
+        # make sure we don't fall through the ground if we start inside it
+        if self.gravity:
+            ray = raycast(self.world_position+(0,self.height,0), self.down, traverse_target=self.traverse_target, ignore=self.ignore_list)
+            if ray.hit:
+                self.y = ray.world_point.y
+
+    def update(self):
+        self.rotation_y += mouse.velocity[0] * self.mouse_sensitivity[1]
+
+        self.camera_pivot.rotation_x -= mouse.velocity[1] * self.mouse_sensitivity[0]
+        self.camera_pivot.rotation_x= clamp(self.camera_pivot.rotation_x, -90, 90)
+
+        self.direction = Vec3(
+            self.forward * (held_keys['w'] - held_keys['s'])
+            + self.right * (held_keys['d'] - held_keys['a'])
+            ).normalized()
+
+        feet_ray = raycast(self.position+Vec3(0,0.5,0), self.direction, traverse_target=self.traverse_target, ignore=self.ignore_list, distance=.5, debug=False)
+        head_ray = raycast(self.position+Vec3(0,self.height-.1,0), self.direction, traverse_target=self.traverse_target, ignore=self.ignore_list, distance=.5, debug=False)
+        if not feet_ray.hit and not head_ray.hit:
+            move_amount = self.direction * time.dt * self.speed
+
+            if raycast(self.position+Vec3(-.0,1,0), Vec3(1,0,0), distance=.5, traverse_target=self.traverse_target, ignore=self.ignore_list).hit:
+                move_amount[0] = min(move_amount[0], 0)
+            if raycast(self.position+Vec3(-.0,1,0), Vec3(-1,0,0), distance=.5, traverse_target=self.traverse_target, ignore=self.ignore_list).hit:
+                move_amount[0] = max(move_amount[0], 0)
+            if raycast(self.position+Vec3(-.0,1,0), Vec3(0,0,1), distance=.5, traverse_target=self.traverse_target, ignore=self.ignore_list).hit:
+                move_amount[2] = min(move_amount[2], 0)
+            if raycast(self.position+Vec3(-.0,1,0), Vec3(0,0,-1), distance=.5, traverse_target=self.traverse_target, ignore=self.ignore_list).hit:
+                move_amount[2] = max(move_amount[2], 0)
+            self.position += move_amount
+
+        if self.gravity:
+            # Apply gravity
+            self.vertical_velocity -= self.gravity * time.dt
+
+            # Calculate potential movement
+            delta_y = self.vertical_velocity * time.dt
+
+            # Check for collision in the vertical movement
+            direction = Vec3(0, math.copysign(1, delta_y), 0) if delta_y != 0 else Vec3(0,0,0)
+            ray = raycast(self.position + Vec3(0, self.height / 2, 0), direction, distance=self.height / 2 + abs(delta_y), traverse_target=self.traverse_target, ignore=self.ignore_list)
+            if ray.hit:
+                if self.vertical_velocity < 0:
+                    # Landing on ground
+                    self.y = ray.world_point.y
+                    self.vertical_velocity = 0
+                    self.grounded = True
+                elif self.vertical_velocity > 0:
+                    # Hitting ceiling
+                    self.y = ray.world_point.y - self.height
+                    self.vertical_velocity = 0
+            else:
+                # No collision, proceed with movement
+                self.y += delta_y
+                self.grounded = False
+
+    def input(self, key):
+        if key == 'space':
+            self.jump()
+
+    def jump(self):
+        if not self.grounded:
+            return
+        self.vertical_velocity = self.jump_speed
+        self.grounded = False
+
+    def on_enable(self):
+        mouse.locked = True
+        self.cursor.enabled = True
+        # restore parent and position/rotation from before disablem in case you moved the camera in the meantime.
+        if hasattr(self, 'camera_pivot') and hasattr(self, '_original_camera_transform'):
+            camera.parent = self.camera_pivot
+            camera.transform = self._original_camera_transform
+
+    def on_disable(self):
+        mouse.locked = False
+        self.cursor.enabled = False
+        self._original_camera_transform = camera.transform  # store original position and rotation
+        camera.world_parent = scene
+
+
 def update():
     global fov_slider, issprinting, iscrouching
     update_hand_position(   )
@@ -1686,7 +1842,7 @@ def update():
             camera.animate('fov', camera.fov - 10, duration=0.05, curve=curve.linear)
             issprinting = False
     player.enabled = mouse.locked
-player = FirstPersonController()
+player = CustomFirstPersonController()
 player.height = 1.8
 player.camera_pivot.y = 1.8
 mouse.locked = False
