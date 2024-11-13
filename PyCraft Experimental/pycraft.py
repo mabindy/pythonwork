@@ -452,7 +452,7 @@ def generate_world(worldseed):
     noise = PerlinNoise (octaves=3, seed=worldseed)
     seedvalue = worldseed
     min_y = -10
-    worlddimensions = 2 #World dimensions are twice this number 
+    worlddimensions = 10 #World dimensions are twice this number 
     for z in range(-worlddimensions,worlddimensions):
         for x in range(-worlddimensions,worlddimensions):
             surface_y = noise([x * .02,z * .02])
@@ -465,25 +465,45 @@ def generate_world(worldseed):
                     treegenerator = random.randint(0,50)
                     if treegenerator == 5:
                         voxel = OakLogVoxel(position=(x,y+1,z))
+                        world_data.append({'position': [x, y+1, z], 'block_type': 'OakLogVoxel'})
                         voxel = OakLogVoxel(position=(x,y+2,z))
+                        world_data.append({'position': [x, y+2, z], 'block_type': 'OakLogVoxel'})
                         voxel = OakLogVoxel(position=(x,y+3,z))
+                        world_data.append({'position': [x, y+3, z], 'block_type': 'OakLogVoxel'})
                         voxel = TreeLeavesVoxel(position=(x,y+3,z+1))
+                        world_data.append({'position': [x, y+3, z+1], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x+1,y+3,z+1))
+                        world_data.append({'position': [x+1, y+3, z+1], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x-1,y+3,z+1))
+                        world_data.append({'position': [x-1, y+3, z+1], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x,y+3,z-1))
+                        world_data.append({'position': [x, y+3, z-1], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x+1,y+3,z-1))
+                        world_data.append({'position': [x+1, y+3, z-1], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x-1,y+3,z-1))
+                        world_data.append({'position': [x-1, y+3, z-1], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x+1,y+3,z))
+                        world_data.append({'position': [x+1, y+3, z], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x-1,y+3,z))
+                        world_data.append({'position': [x-1, y+3, z], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x,y+4,z+1))
+                        world_data.append({'position': [x, y+4, z+1], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x+1,y+4,z+1))
+                        world_data.append({'position': [x+1, y+4, z+1], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x-1,y+4,z+1))
+                        world_data.append({'position': [x-1, y+4, z+1], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x,y+4,z-1))
+                        world_data.append({'position': [x, y+4, z-1], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x+1,y+4,z-1))
+                        world_data.append({'position': [x+1, y+4, z-1], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x-1,y+4,z-1))
+                        world_data.append({'position': [x-1, y+4, z-1], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x+1,y+4,z))
+                        world_data.append({'position': [x+1, y+4, z], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x-1,y+4,z))
+                        world_data.append({'position': [x-1, y+4, z], 'block_type': 'TreeLeavesVoxel'})
                         voxel = TreeLeavesVoxel(position=(x,y+5,z))
+                        world_data.append({'position': [x, y+5, z], 'block_type': 'TreeLeavesVoxel'})
                 elif y == min_y:
                     voxel = worldgenerationvoxels['minvoxel'](position=position)
                     block_type = (type(voxel).__name__)
@@ -1440,7 +1460,7 @@ def input(key):
                         
                     invoke(hand.animate_rotation, defrot, duration=0.2, curve=curve.in_out_quad, delay=0.2)
         
-        if key == 'middle mouse down' and mouse.hovered_entity:
+        if key == 'middle mouse down' and mouse.hovered_entity and not hasattr(mouse.hovered_entity, 'wall'):
             global blockcopied
             voxcolor = mouse.hovered_entity.color
             blockcopied = mouse.hovered_entity.__class__.__name__
