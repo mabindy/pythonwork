@@ -15,10 +15,13 @@ import importlib
 import importlib.util
 import sys
 from datetime import datetime
+import time
 current_datetime = datetime.now()
 app = Ursina(borderless=False, title='PyCraft', icon='PyCraft/pycraftlogo.ico')
-game_version = '1.5 indev'
+game_version = '2.0 indev'
 world_data = []
+hearts = []
+hungers = []
 debugOpen = False
 window.fullscreen = False
 seedvalue = None
@@ -29,12 +32,44 @@ replacingslot = False
 pause_menu_open = False
 play_menu_open = False
 block_class_mapping = {}
+paused = False
+spawnpoint = Vec3(*[0,0,0])
 # Define a Voxel class.
 # By setting the parent to scene and the model to 'cube' it becomes a 3d button.
+vignette = Entity(
+        parent=camera.ui,
+        model='quad',
+        scale=(2, 1, 1),
+        color=color.rgba(250,0,0,0),
+        texture = "PyCraft/Textures/damage",
+        position=(0,0,-3),  
+        visible=True,
+        blend_mode='transparent',
+        )
+
+class Cloud(Entity):
+    def __init__(self, position=(0,0,0), size=(30,3,5), **kwargs):
+        super().__init__(**kwargs)
+        self.size = size
+        self.position = position
+
+        for x in range(size[0]):
+            for y in range(size[1]):
+                for z in range(size[2]):
+                    if random.random() > 0.7:
+                        cube = Entity(
+                            model='cube',
+                            color=color.rgba(1,1,1,0.5),
+                            scale=size,
+                            position=(x,y,z),
+                            parent=self,
+                        )
+                        
 class Voxel(Button):
     block_texture='PyCraft/Textures/cobblestone.png'
     block_icon = 'PyCraft/Textures/cobblestoneblock.png'
     block_color = color.hsv(0, 0, .9)
+    block_model = 'cube'
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(0, 0, 0.9)
         super().__init__(parent=scene,
@@ -54,6 +89,7 @@ class IronOreVoxel(Button):
     block_texture='PyCraft/Textures/iron_ore.png'
     block_icon = 'PyCraft/Textures/ironoreblock.png'
     block_color = color.hsv(0, 0, .9)
+    block_model = 'cube'
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(0, 0, 0.9)
         super().__init__(parent=scene,
@@ -73,6 +109,7 @@ class CoalOreVoxel(Button):
     block_texture='PyCraft/Textures/coal_ore.png'
     block_icon = 'PyCraft/Textures/coaloreblock.png'
     block_color = color.hsv(0, 0, .9)
+    block_model = 'cube'
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(0, 0, 0.9)
         super().__init__(parent=scene,
@@ -92,6 +129,7 @@ class OakPlanksVoxel(Button):
     block_texture='PyCraft/Textures/oak_planks.png'
     block_icon = 'PyCraft/Textures/oakplanksblock.png'
     block_color = color.hsv(0, 0, .9)
+    block_model = 'cube'
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(0, 0, .9)
         super().__init__(parent=scene,
@@ -108,16 +146,18 @@ class OakPlanksVoxel(Button):
         self.highlight_color = color.rgb(r, g, b)
 block_class_mapping['OakPlanksVoxel'] = OakPlanksVoxel
 class OakLogVoxel(Button):
-    block_texture='PyCraft/Textures/oaklog.png'
+    block_texture='PyCraft/Textures/oaklogatlas.png'
     block_icon = 'PyCraft/Textures/oaklogblock.png'
     block_color = color.hsv(0, 0, .9)
+    block_model = 'PyCraft/Textures/Grass_Block.obj'
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(0, 0, .9)
         super().__init__(parent=scene,
             position=position,
-            model='cube',
-            origin_y=.5,
-            texture='PyCraft/Textures/oaklog.png',
+            model='PyCraft/Textures/Grass_Block.obj',
+            origin_y=2,
+            scale=0.5,
+            texture='PyCraft/Textures/oaklogatlas.png',
             color=base_color,
             isblock = True
         )
@@ -130,6 +170,7 @@ class TreeLeavesVoxel(Button):
     block_texture='PyCraft/Textures/treeleaves.png'
     block_icon = 'PyCraft/Textures/oaklogblock.png'
     block_color = color.hsv(0, 0, .9)
+    block_model = 'cube'
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(0, 0, .9)
         super().__init__(parent=scene,
@@ -149,6 +190,7 @@ class GlassVoxel(Button):
     block_texture='PyCraft/Textures/glass.png'
     block_icon = 'PyCraft/Textures/glassblock.png'
     block_color = color.hsv(0, 0, .9)
+    block_model = 'cube'
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(0, 0, .9)
         super().__init__(parent=scene,
@@ -165,20 +207,23 @@ class GlassVoxel(Button):
         self.highlight_color = color.rgb(r, g, b)
 block_class_mapping['GlassVoxel'] = GlassVoxel
 class GroundVoxel(Button):
-    block_texture='PyCraft/Textures/grass_top.png'
+    block_texture='PyCraft/Textures/grassatlas.png'
     block_icon = 'PyCraft/Textures/grassblock.png'
-    block_color = color.hsv(120, 0.75, 0.7)
+    block_model = 'PyCraft/Textures/Grass_Block.obj'
+    block_color = color.hsv(0, 0, 0.9)
     def __init__(self, position=(0,0,0)):
-        base_color = color.hsv(120, 0.75, 0.7)
+        base_color = color.hsv(0, 0, 0.9)
         super().__init__(parent=scene,
             position=position,
-            model='cube',
-            origin_y=.5,
-            texture='PyCraft/Textures/grass_top.png',
+            model='PyCraft/Textures/Grass_Block.obj',
+            origin_y=2,
+            texture='PyCraft/Textures/grassatlas.png',
+            scale=0.5,
             color=base_color,
             highlight_color=color.cyan,
             isblock = True
         )
+
         r = min(base_color.r + 0.1, 1.0)
         g = min(base_color.g + 0.1, 1.0)
         b = min(base_color.b + 0.1, 1.0)
@@ -187,9 +232,10 @@ block_class_mapping['GroundVoxel'] = GroundVoxel
 class BrownVoxel(Button):
     block_texture = 'PyCraft/Textures/default_dirt.png'
     block_icon = 'PyCraft/Textures/dirtblock.png'
-    block_color = color.hsv(30, 0.5, 0.7)
+    block_color = color.hsv(0, 0, 0.9)
+    block_model = 'cube'
     def __init__(self, position=(0,0,0)):
-        base_color = color.hsv(30, 0.5, 0.7)
+        base_color = color.hsv(0, 0, 0.8)
         super().__init__(parent=scene,
             position=position,
             model='cube',
@@ -209,6 +255,7 @@ class WhiteWoolVoxel(Button):
     block_texture='PyCraft/Textures/white_wool.png'
     block_icon = 'PyCraft/Textures/whitewoolblock.png'
     block_color = color.hsv(0, 0, .9)
+    block_model = 'cube'
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(0, 0, .9)
         super().__init__(parent=scene,
@@ -228,6 +275,7 @@ class BlackWoolVoxel(Button):
     block_texture='PyCraft/Textures/black_wool.png'
     block_icon = 'PyCraft/Textures/blackwoolblock.png'
     block_color = color.hsv(0, 0, .9)
+    block_model = 'cube'
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(0, 0, .9)
         super().__init__(parent=scene,
@@ -247,6 +295,7 @@ class RedWoolVoxel(Button):
     block_texture='PyCraft/Textures/red_wool.png'
     block_icon = 'PyCraft/Textures/redwoolblock.png'
     block_color = color.hsv(0, 0, .9)
+    block_model = 'cube'
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(0, 0, .9)
         super().__init__(parent=scene,
@@ -285,6 +334,7 @@ class Bedrock(Button):
     block_texture='PyCraft/Textures/bedrocktexture.png'
     block_icon = 'PyCraft/Textures/bedrockblock.png'
     block_color = color.hsv(0, 0, 1)
+    block_model = 'cube'
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(0, 0, 1)
         super().__init__(parent=scene,
@@ -313,8 +363,8 @@ worldgenerationvoxels = {
 inventory_opened = False
 inventory_blocks_pg1 = [
     {'voxel_class': Voxel, 'texture': Voxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
-    {'voxel_class': BrownVoxel, 'texture': BrownVoxel.block_icon, 'color': color.hsv(30, 0.5, 0.7), 'name': 'Dirt'},
-    {'voxel_class': GroundVoxel, 'texture': GroundVoxel.block_icon, 'color': color.hsv(120, 0.75, 0.7), 'name': 'Grass'},
+    {'voxel_class': BrownVoxel, 'texture': BrownVoxel.block_icon, 'color': color.hsv(0, 0, 0.8), 'name': 'Dirt'},
+    {'voxel_class': GroundVoxel, 'texture': GroundVoxel.block_icon, 'color': color.hsv(0, 0, 0.9), 'name': 'Grass'},
     {'voxel_class': OakPlanksVoxel, 'texture': OakPlanksVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Oak Planks'},
     {'voxel_class': GlassVoxel, 'texture': GlassVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Glass'},
     {'voxel_class': IronOreVoxel, 'texture': IronOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Iron Ore'},
@@ -373,6 +423,20 @@ game_api = {
 
 }
 
+clouds = []
+
+def generate_clouds(number_of_clouds=10):
+    for _ in range(number_of_clouds):
+        x = random.randint(-50, 50)
+        z = random.randint(-50,50)
+        y = 20
+        width = random.randint(6, 12)
+        depth = random.randint(4, 8)
+        height = 1
+        cloud = Cloud(position=(x,y,z), size=(width, height, depth))
+        clouds.append(cloud)
+
+generate_clouds()
 
 def load_mod_states(mods_folder='Documents/PyCraft/mods'):
     config_path = os.path.join(mods_folder, 'mods_config.json')
@@ -462,7 +526,7 @@ def generate_world(worldseed):
                 if y == surface_y:
                     voxel = worldgenerationvoxels['surfacevoxel'](position=position)
                     block_type = (type(voxel).__name__)
-                    treegenerator = random.randint(0,50)
+                    treegenerator = random.randint(0,65)
                     if treegenerator == 5:
                         voxel = OakLogVoxel(position=(x,y+1,z))
                         world_data.append({'position': [x, y+1, z], 'block_type': 'OakLogVoxel'})
@@ -526,6 +590,7 @@ def generate_world(worldseed):
     player.position = Vec3(*[0,0,0])
     destroy_play_menu()
     build_hotbar()
+    update_equipped_slot(slot1)
     mouse.locked = True
 
 def build_barriers(dimensions, miny):
@@ -606,7 +671,7 @@ hotbar = Entity(
     )
 
 def build_hotbar():
-    global hotbar, selector, slot1, slot2, slot3, slot4, slot5, slot6, slot7, slot8, slot9, slotselected
+    global hotbar, selector, slot1, slot2, slot3, slot4, slot5, slot6, slot7, slot8, slot9, slotselected, hearts, slots
     hotbar = Entity(
     parent=camera.ui,
     model='quad',
@@ -630,8 +695,9 @@ def build_hotbar():
                     scale=(0.045, 0.045),
                     hand_color = color.hsv(0, 0, .9),
                     on_click = lambda: equip_block(slot1) if holding_block else swap_block(slot1),
-                    equipped=Voxel 
-                    )
+                    equipped=Voxel if creative else False,
+                    visible = True if creative else False
+                    ) 
     slot2 = Button( 
                     color=color.hsv(0, 0, .9),
                     texture='PyCraft/Textures/dirtblock.png',
@@ -639,7 +705,8 @@ def build_hotbar():
                     scale=(0.045, 0.045),
                     hand_color = color.hsv(30, 0.5, 0.7),
                     on_click = lambda: equip_block(slot2) if holding_block else swap_block(slot2),
-                    equipped=BrownVoxel
+                    equipped=BrownVoxel if creative else False,
+                    visible = True if creative else False
                     )
     slot3 = Button( 
                     color=color.hsv(0, 0, 0.9),
@@ -656,7 +723,8 @@ def build_hotbar():
                     scale=(0.045, 0.045),
                     hand_color = color.hsv(0,0,.9),
                     on_click = lambda: equip_block(slot4) if holding_block else swap_block(slot4),
-                    equipped='gun'
+                    equipped='gun' if creative else False,
+                    visible = True if creative else False
                     )
     slot5 = Button( 
                     color=color.hsv(0, 0, .9),
@@ -665,7 +733,8 @@ def build_hotbar():
                     scale=(0.045, 0.045),
                     hand_color = color.hsv(0,0,.9),
                     on_click = lambda: equip_block(slot5) if holding_block else swap_block(slot5),
-                    equipped=OakPlanksVoxel
+                    equipped=OakPlanksVoxel if creative else False,
+                    visible = True if creative else False
                     )
     slot6 = Button( 
                     color=color.hsv(0, 0, .9),
@@ -674,7 +743,8 @@ def build_hotbar():
                     scale=(0.045, 0.045),
                     hand_color = color.hsv(0,0,.9),
                     on_click = lambda: equip_block(slot6) if holding_block else swap_block(slot6),
-                    equipped=GlassVoxel
+                    equipped=GlassVoxel if creative else False,
+                    visible = True if creative else False
                     )
     slot7 = Button( 
                     color=color.hsv(0, 0, .9),
@@ -700,6 +770,25 @@ def build_hotbar():
                     equipped='open',
                     visible=False
                     )
+    slots = [slot1, slot2, slot3, slot4, slot5, slot6, slot7, slot8, slot9]
+    spacing = -0.0235
+    if not creative:
+        for i in range(10):
+            heart = Button(
+                color=color.hsv(0, 0, .9),
+                texture='PyCraft/Textures/fullheart.png',
+                position=(-0.03 + i * spacing, -0.4, -1),
+                scale=(0.023, 0.023),
+            )
+            hearts.append(heart)
+        for i in range(10):
+            hunger = Button(
+                color=color.hsv(0, 0, .9),
+                texture='PyCraft/Textures/hungerfull.png',
+                position=(0.235 + i * spacing, -0.4, -1),
+                scale=(0.032, 0.033),
+            )
+            hungers.append(hunger)
     slotselected = slot1
 
 hand = Entity(model='cube',texture='PyCraft/Textures/cobblestone.png', color=color.hsv(0,0,0.9), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
@@ -739,7 +828,9 @@ def save_world(filename=r'C:\Users\mberr954\Documents\PyCraft\Worlds\world_save.
         'player_position': [player.position.x, player.position.y, player.position.z],
         'world_size': [worlddimensions, min_y],
         'world_version': game_version,
-        'last_save_date': f'{current_datetime.date()}'
+        'last_save_date': f'{current_datetime.date()}',
+        'creative': creative,
+        'hotbar': [slot.equipped.__name__ if slot.equipped and isinstance(slot.equipped, type) else slot.equipped if slot.equipped else None for slot in slots]
     }
     if world_mods != []:
         save_data['world_mods'] = world_mods
@@ -749,7 +840,7 @@ def save_world(filename=r'C:\Users\mberr954\Documents\PyCraft\Worlds\world_save.
         json.dump(save_data, f)
 
 def load_world(filename):
-    global world_data, worlddimensions, worldver, seedvalue, saved_world_name, inventory_blocks_pg1, inventory_blocks_pg2
+    global world_data, worlddimensions, worldver, seedvalue, saved_world_name, inventory_blocks_pg1, inventory_blocks_pg2, slots, last_y_position, creative
     saved_world_name = filename[43:]
     with open(filename, 'r') as f:
         save_data = json.load(f)
@@ -758,6 +849,14 @@ def load_world(filename):
     worldver = save_data.get('world_version', 'Unknown')
     seedvalue = save_data.get('world_seed', 'Unknown')
     neededmods = save_data.get('world_mods', None)
+    iscreative = save_data.get('creative', 'Unknown')
+    if iscreative and not iscreative == 'Unknown':
+        creative = True
+    elif iscreative == 'Unknown':
+        print('Gamemode not found in save file, defaulting to survival.')
+        creative = False
+    elif not iscreative:
+        creative = False
     missingmods = []
     if neededmods:
         for mod in neededmods:
@@ -777,6 +876,20 @@ def load_world(filename):
     clear_world()
     rebuild_world_from_data()
     build_hotbar()
+    hotbar_state = save_data.get('hotbar', [])
+    for slot, equipped_name in zip(slots, hotbar_state):
+        if equipped_name:
+            if equipped_name in block_class_mapping:
+                slot.equipped = block_class_mapping[equipped_name]
+                slot.hand_color = block_class_mapping[equipped_name].block_color  
+                slot.visible = True
+                slot.texture = block_class_mapping[equipped_name].block_icon
+            else:
+                slot.equipped = equipped_name  
+        else:
+            slot.equipped = None
+            slot.visible = False
+    last_y_position = None
     player.position = Vec3(*player_position)
     mouse.locked = True
 
@@ -786,16 +899,16 @@ def get_world_timesaved(filename):
     lasttimesave = save_data.get('last_save_date', 'Unknown')
     return lasttimesave
 
-print(get_world_timesaved('Documents/PyCraft/Worlds/datetime test.json'))
 settings_opened = False
 def toggle_mouse_lock():
-    global settings_opened, pause_menu_open
+    global settings_opened, pause_menu_open, paused
     if mouse.locked:
         mouse.locked = False
         mouse.visible = True
         pause_menu.visible = True
         build_pause_menu()
         pause_menu_open = True
+        paused = True
     else:
         mouse.locked = True
         mouse.visible = False
@@ -804,11 +917,13 @@ def toggle_mouse_lock():
             close_settings()
         destroy_pause_menu()
         pause_menu_open = False
+        paused = False
 pause_menu = Entity(
     parent=camera.ui,
     model='quad',
     scale=(2, 2, 1),
-    color=color.rgba(0,0,0, 0.5),  
+    color=color.rgba(0,0,0, 0.5),
+    position=(0,0,-3),  
     visible=False  
 )
 def toggle_fullscreen():
@@ -816,7 +931,7 @@ def toggle_fullscreen():
     fullscreen_button.text = 'Fullscreen: Disabled' if not window.fullscreen else 'Fullscreen: Enabled'
 
 def open_settings():
-    global settings_label, back_button, fullscreen_button, settings_opened, fov_slider
+    global settings_label, back_button, fullscreen_button, settings_opened, fov_slider, gamemode_button, creative
     settings_opened = True
     destroy_pause_menu()
     settings_label = Text(
@@ -835,6 +950,16 @@ def open_settings():
         position=(0, 0),  # Position on the screen
         on_click = lambda: toggle_fullscreen()
     )
+
+    gamemode_button = Button(
+        parent=pause_menu,
+        text='Gamemode: Survival' if not creative else 'Gamemode: Creative',
+        color=color.gray,
+        scale=(0.15, 0.02),  # Size of the button
+        position=(0, -0.05),  # Position on the screen
+        on_click = lambda: toggle_gamemode()
+    )
+
     fov_slider = Slider(
         min=60, max=120, default=camera.fov,
         parent=pause_menu,
@@ -867,8 +992,39 @@ def close_settings():
     destroy(settings_label)
     destroy(fullscreen_button)
     destroy(fov_slider)
+    destroy(gamemode_button)
     build_pause_menu()
     settings_opened = False
+
+def toggle_gamemode():
+    global hearts, hungers, gamemode_button, creative
+    if creative:
+        spacing = -0.0235
+        for i in range(10):
+            heart = Button(
+                color=color.hsv(0, 0, .9),
+                texture='PyCraft/Textures/fullheart.png',
+                position=(-0.03 + i * spacing, -0.4, -1),
+                scale=(0.023, 0.023),
+            )
+            hearts.append(heart)
+        for i in range(10):
+            hunger = Button(
+                color=color.hsv(0, 0, .9),
+                texture='PyCraft/Textures/hungerfull.png',
+                position=(0.235 + i * spacing, -0.4, -1),
+                scale=(0.032, 0.033),
+            )
+            hungers.append(hunger)
+        creative = False
+        gamemode_button.text = 'Gamemode: Survival'
+    else:
+        for heart in hearts:
+            destroy(heart)
+        for hunger in hungers:
+            destroy(hunger)
+        creative = True
+        gamemode_button.text = 'Gamemode: Creative'
 
 def destroy_pause_menu():
     global save_field_open, confirm_save_button
@@ -882,7 +1038,6 @@ def destroy_pause_menu():
     destroy(pause_label)
     destroy(save_button)
     destroy(load_button)
-    destroy(gen_button)
 
 def build_pause_menu():
     global resume_button, quit_button, pause_label, settings_button, save_button, load_button, gen_button, save_field_open, confirm_save_button, saved_world_name
@@ -945,14 +1100,6 @@ def build_pause_menu():
         on_click = lambda: load_world()
     )
 
-    gen_button = Button(
-        parent=pause_menu,
-        text='Back to Menu',
-        color=color.gray,
-        scale=(0.15, 0.02), 
-        position=(0, -0.25),  
-        on_click = lambda: leavetomenu()
-    )
 
     quit_button = Button(
         parent=pause_menu,
@@ -1090,8 +1237,10 @@ def back_to_main_menu():
     destroy(back_to_main_menu_button)
     destroy(mainbackground)
     build_main_menu()
+
+creative = False
 def open_play_menu():
-    global file_buttons, createworld_button, worldseedinput, play_menu_open, returntomenu_button
+    global file_buttons, createworld_button, worldseedinput, play_menu_open, returntomenu_button, creative, mode_select_button
     destroy_main_menu()
     play_menu_open = True
     folder_path = r'C:\Users\mberr954\Documents\PyCraft\Worlds'
@@ -1140,13 +1289,21 @@ def open_play_menu():
         text='Create World',
         color=color.gray,
         scale=(0.25, 0.04),
-        position=(0, -0.15),  
+        position=(0, -0.15, -1),  
         on_click = lambda: generate_world(worldseedinput.text)
+    )
+    mode_select_button = Button(
+        parent=camera.ui,
+        text='Mode: Creative' if creative else 'Mode: Survival',
+        color=color.gray,
+        scale=(0.2, 0.04),
+        position=(0.275, -0.15, -1),  
+        on_click = lambda: toggle_mode()
     )
     worldseedinput = InputField(
         default_value='Seed',
         scale=(0.2, 0.05), 
-        position=(0, -0.2)
+        position=(0, -0.2, -1)
         )
     def limit_text():
         if len(worldseedinput.text) > 5:
@@ -1157,9 +1314,14 @@ def open_play_menu():
         text='Back',
         color=color.gray,
         scale=(0.25, 0.04),
-        position=(-0.3, -0.15),  
+        position=(-0.3, -0.15, -1),  
         on_click = lambda: build_main_menu()
     )
+
+def toggle_mode():
+    global creative
+    creative = not creative
+    mode_select_button.text = 'Mode: Creative' if creative else 'Mode: Survival'
 
 def destroy_play_menu():
     global file_buttons, main_menu_open
@@ -1167,6 +1329,7 @@ def destroy_play_menu():
     destroy(createworld_button)
     destroy(worldseedinput)
     destroy(returntomenu_button)
+    destroy(mode_select_button)
     for i in file_buttons:
         destroy(i)
     file_buttons = []
@@ -1183,10 +1346,38 @@ def delete_world(filepath):
     open_play_menu()
 def toggle_inventory():
     global inventory_opened
-    if inventory_opened:
-        close_inventory()
+    if creative:
+        if inventory_opened:
+            close_inventory()
+        else:
+            open_inventory(currentpagedata['page'], currentpagedata['pagenumber'], currentpagedata['pagelabel'])
     else:
-        open_inventory(currentpagedata['page'], currentpagedata['pagenumber'], currentpagedata['pagelabel'])
+        if inventory_opened:
+            close_survival_inventory()
+        else:
+            open_survival_inventory()
+
+def open_survival_inventory():
+    global inventory_opened, survival_inventory_panel
+    inventory_opened = True
+    mouse.locked = False
+    mouse.visible = True
+
+    survival_inventory_panel = Entity(
+        parent=camera.ui,
+        model='quad',
+        texture = 'PyCraft/Textures/survivalinventory.png',
+        scale=(0.5,0.45),
+        color=color.hsv(0,0,0.9),
+        position = (0,0,1)
+    )
+
+def close_survival_inventory():
+    global inventory_opened
+    inventory_opened = False
+    mouse.locked = True
+    mouse.visible = False
+    destroy(survival_inventory_panel)
 
 def open_inventory(pg, pgn, pgl):
     global inventory_opened, inventory_panel, block_buttons, page_number, next_arrow, previous_arrow, page_label
@@ -1396,6 +1587,7 @@ def update_equipped_slot(s):
     if s.equipped and s.equipped != 'gun':
         selectedvoxel = s.equipped
         block_texture = selectedvoxel.block_texture
+        block_model = selectedvoxel.block_model
         selected = 'block'
     elif s.equipped == 'gun':
         selectedvoxel = None
@@ -1407,7 +1599,7 @@ def update_equipped_slot(s):
     slotselected = s
     destroy(hand)
     if selectedvoxel:
-        hand = Entity(model='cube',texture=block_texture, color=s.hand_color, scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+        hand = Entity(model=block_model,texture=block_texture, color=s.hand_color, scale=(0.5,0.5,0.5) if block_model == 'cube' else (0.25, 0.25, 0.25), origin_y =0 if block_model == 'cube' else 1,  rotation=(0,0,0), position=(0,0,0), parent=camera)
     elif not selectedvoxel and selected == 'ak':
         hand = Entity(model="PyCraft/Textures/ak.obj", scale=(0.5,0.5,0.5), position=(0,0,0), rotation=(180,0,180), parent=camera)
     else:
@@ -1421,8 +1613,60 @@ def update_equipped_slot(s):
         visible=True
         )
     
+def build_death_screen():
+    global death_background, death_label, respawn_button, death_quit_button
+    mouse.locked = False
+    death_background = Entity(
+    parent=camera.ui,
+    model='quad',
+    scale=(2, 2, 1),
+    color=color.rgba(0,0,0, 0.5),
+    position=(0,0,-3),  
+    visible=True  
+    )
+    death_label = Text(
+        parent=death_background,  
+        text='You Died!',   
+        origin=(0, 0),      
+        scale=2,            
+        color=color.white,   
+        position=(0, 0.1),            
+    ) 
+    respawn_button = Button(
+        parent=death_background,
+        text='Respawn',
+        color=color.gray,
+        scale=(0.15, 0.02),  # Size of the button
+        position=(0, 0),  # Position on the screen
+        on_click = lambda: destroy_death_screen()
+    )
+    death_quit_button = Button(
+        parent=death_background,
+        text='Quit',
+        color=color.gray,
+        scale=(0.15, 0.02),  # Size of the button
+        position=(0, -0.05),  # Position on the screen
+        on_click = application.quit
+    )
+
+def destroy_death_screen():
+    global last_y_position, health
+    mouse.locked = True
+    destroy(death_label)
+    destroy(respawn_button)
+    destroy(death_quit_button)
+    destroy(death_background)
+    for heart in hearts:
+        heart.texture = 'PyCraft/Textures/fullheart'
+    health = 100
+    last_y_position = None
+    player.position = Vec3(*[0,0,0])
+
+
+
 build_main_menu()
 defrot = (0,0,0)
+
 
 
 
@@ -1460,21 +1704,23 @@ def input(key):
                         
                     invoke(hand.animate_rotation, defrot, duration=0.2, curve=curve.in_out_quad, delay=0.2)
         
-        if key == 'middle mouse down' and mouse.hovered_entity and not hasattr(mouse.hovered_entity, 'wall'):
+        if key == 'middle mouse down' and creative and mouse.hovered_entity and not hasattr(mouse.hovered_entity, 'wall'):
             global blockcopied
             voxcolor = mouse.hovered_entity.color
             blockcopied = mouse.hovered_entity.__class__.__name__
             blocktexture =mouse.hovered_entity.texture
             blockicon = mouse.hovered_entity.block_icon
+            blockmodel = mouse.hovered_entity.block_model
             if hasattr(mouse.hovered_entity, 'destroyable'):
                 class CopiedVoxel(Button):
                     block_texture = blocktexture
                     block_color = voxcolor
+                    block_model = blockmodel
                     def __init__(self, position=(0,0,0)):
                         base_color = color.rgb(voxcolor.r, voxcolor.g, voxcolor.b)
                         super().__init__(parent=scene,
                         position=position,
-                        model='cube',
+                        model=blockmodel,
                         origin_y=.5,
                         texture=blocktexture,
                         block_icon=blockicon,
@@ -1489,12 +1735,14 @@ def input(key):
             else:
                 class CopiedVoxel(Button):
                     block_texture = blocktexture
+                    block_model = blockmodel
                     def __init__(self, position=(0,0,0)):
                         base_color = color.rgb(voxcolor.r, voxcolor.g, voxcolor.b)
                         super().__init__(parent=scene,
                         position=position,
-                        model='cube',
-                        origin_y=.5,
+                        model=blockmodel,
+                        origin_y=.5 if blockmodel == 'cube' else 2,
+                        scale=1 if blockmodel == 'cube' else 0.5,
                         texture=blocktexture,
                         block_icon=blockicon,
                         color=base_color,
@@ -1512,7 +1760,7 @@ def input(key):
             selected = 'copiedblock'
             defrot = (0,0,0)
             destroy(hand)
-            hand = Entity(model='cube',texture=blocktexture, color=color.rgb(voxcolor.r, voxcolor.g, voxcolor.b), scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+            hand = Entity(model=blockmodel,texture=blocktexture, color=color.rgb(voxcolor.r, voxcolor.g, voxcolor.b), scale=(0.5,0.5,0.5) if blockmodel == 'cube' else (0.25, 0.25, 0.25), origin_y = 0 if blockmodel == 'cube' else 1 , rotation=(0,0,0), position=(0,0,0), parent=camera)
         if key == 'right mouse down':
             hit_info = raycast(camera.world_position, camera.forward, distance=5, ignore=(player,))
             if hit_info.hit and selectedvoxel and not hasattr(hit_info.entity, 'wall'):
@@ -1565,6 +1813,7 @@ def input(key):
             if slot1.equipped and slot1.equipped != 'gun':
                 selectedvoxel = slot1.equipped
                 block_texture = selectedvoxel.block_texture
+                block_model = selectedvoxel.block_model
                 selected = 'block'
             elif slot1.equipped == 'gun':
                 selectedvoxel = None
@@ -1576,7 +1825,7 @@ def input(key):
             slotselected = slot1
             destroy(hand)
             if selectedvoxel:
-                hand = Entity(model='cube',texture=block_texture, color=slot1.hand_color, scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+                hand = Entity(model=block_model,texture=block_texture, color=slot1.hand_color, scale=(0.5,0.5,0.5) if block_model == 'cube' else (0.25, 0.25, 0.25), origin_y =0 if block_model == 'cube' else 1,  rotation=(0,0,0), position=(0,0,0), parent=camera)
             elif not selectedvoxel and selected == 'ak':
                 hand = Entity(model="PyCraft/Textures/ak.obj", scale=(0.5,0.5,0.5), position=(0,0,0), rotation=(180,0,180), parent=camera)
             else:
@@ -1593,6 +1842,7 @@ def input(key):
             if slot2.equipped and slot2.equipped != 'gun':
                 selectedvoxel = slot2.equipped
                 block_texture = selectedvoxel.block_texture
+                block_model = selectedvoxel.block_model
                 selected = 'block'
             elif slot2.equipped == 'gun':
                 selectedvoxel = None
@@ -1604,7 +1854,7 @@ def input(key):
             slotselected = slot2
             destroy(hand)
             if selectedvoxel:
-                hand = Entity(model='cube',texture=block_texture, color=slot2.hand_color, scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+                hand = Entity(model=block_model,texture=block_texture, color=slot1.hand_color, scale=(0.5,0.5,0.5) if block_model == 'cube' else (0.25, 0.25, 0.25), origin_y =0 if block_model == 'cube' else 1,  rotation=(0,0,0), position=(0,0,0), parent=camera)
             elif not selectedvoxel and selected == 'ak':
                 hand = Entity(model="PyCraft/Textures/ak.obj", scale=(0.5,0.5,0.5), position=(0,0,0), rotation=(180,0,180), parent=camera)
             else:
@@ -1621,6 +1871,7 @@ def input(key):
             if slot3.equipped and slot3.equipped != 'gun':
                 selectedvoxel = slot3.equipped
                 block_texture = selectedvoxel.block_texture
+                block_model = selectedvoxel.block_model
                 selected = 'block'
             elif slot3.equipped == 'gun':
                 selectedvoxel = None
@@ -1632,7 +1883,7 @@ def input(key):
             slotselected = slot3
             destroy(hand)
             if selectedvoxel:
-                hand = Entity(model='cube',texture=block_texture, color=slot3.hand_color, scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+                hand = Entity(model=block_model,texture=block_texture, color=slot1.hand_color, scale=(0.5,0.5,0.5) if block_model == 'cube' else (0.25, 0.25, 0.25), origin_y =0 if block_model == 'cube' else 1,  rotation=(0,0,0), position=(0,0,0), parent=camera)
             elif not selectedvoxel and selected == 'ak':
                 hand = Entity(model="PyCraft/Textures/ak.obj", scale=(0.5,0.5,0.5), position=(0,0,0), rotation=(180,0,180), parent=camera)
             else:
@@ -1649,6 +1900,7 @@ def input(key):
             if slot4.equipped and slot4.equipped != 'gun':
                 selectedvoxel = slot4.equipped
                 block_texture = selectedvoxel.block_texture
+                block_model = selectedvoxel.block_model
                 selected = 'block'
             elif slot4.equipped == 'gun':
                 selectedvoxel = None
@@ -1661,7 +1913,7 @@ def input(key):
             destroy(selector)
             slotselected = slot4
             if selectedvoxel:
-                hand = Entity(model='cube',texture=block_texture, color=slot4.hand_color, scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+                hand = Entity(model=block_model,texture=block_texture, color=slot1.hand_color, scale=(0.5,0.5,0.5) if block_model == 'cube' else (0.25, 0.25, 0.25), origin_y =0 if block_model == 'cube' else 1,  rotation=(0,0,0), position=(0,0,0), parent=camera)
             elif not selectedvoxel and selected == 'ak':
                 hand = Entity(model="PyCraft/Textures/ak.obj", scale=(0.5,0.5,0.5), position=(0,0,0), rotation=(180,0,180), parent=camera)
             else:
@@ -1677,6 +1929,7 @@ def input(key):
             if slot5.equipped and slot5.equipped != 'gun':
                 selectedvoxel = slot5.equipped
                 block_texture = selectedvoxel.block_texture
+                block_model = selectedvoxel.block_model
                 selected = 'block'
             elif slot5.equipped == 'gun':
                 selectedvoxel = None
@@ -1688,7 +1941,7 @@ def input(key):
             destroy(hand)
             slotselected = slot5
             if selectedvoxel:       
-                hand = Entity(model='cube',texture=block_texture, color=slot5.hand_color, scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+                hand = Entity(model=block_model,texture=block_texture, color=slot1.hand_color, scale=(0.5,0.5,0.5) if block_model == 'cube' else (0.25, 0.25, 0.25), origin_y =0 if block_model == 'cube' else 1,  rotation=(0,0,0), position=(0,0,0), parent=camera)
             elif not selectedvoxel and selected == 'ak':
                 hand = Entity(model="PyCraft/Textures/ak.obj", scale=(0.5,0.5,0.5), position=(0,0,0), rotation=(180,0,180), parent=camera)
             else:
@@ -1705,6 +1958,7 @@ def input(key):
             if slot6.equipped and slot6.equipped != 'gun':
                 selectedvoxel = slot6.equipped
                 block_texture = selectedvoxel.block_texture
+                block_model = selectedvoxel.block_model
                 selected = 'block'
             elif slot6.equipped == 'gun':
                 selectedvoxel = None
@@ -1716,7 +1970,7 @@ def input(key):
             destroy(hand)
             slotselected = slot6
             if selectedvoxel:
-                hand = Entity(model='cube',texture=block_texture, color=slot6.hand_color, scale=(0.5,0.5,0.5), rotation=(0,0,0), position=(0,0,0), parent=camera)
+                hand = Entity(model=block_model,texture=block_texture, color=slot1.hand_color, scale=(0.5,0.5,0.5) if block_model == 'cube' else (0.25, 0.25, 0.25), origin_y =0 if block_model == 'cube' else 1,  rotation=(0,0,0), position=(0,0,0), parent=camera)
             elif not selectedvoxel and selected == 'ak':
                 hand = Entity(model="PyCraft/Textures/ak.obj", scale=(0.5,0.5,0.5), position=(0,0,0), rotation=(180,0,180), parent=camera)
             else:
@@ -1736,6 +1990,11 @@ iscrouching = False
 
 from ursina import *
 
+def flash_vignette():
+    vignette.color = color.rgba(255, 0, 0, 1)
+    vignette.animate_color(color.rgba(255, 0, 0, 0), duration=1.5, curve=curve.linear)
+
+
 class CustomFirstPersonController(Entity):
     def __init__(self, **kwargs):
         self.cursor = Entity(parent=camera.ui, model='quad', color=color.pink, scale=.008, rotation_z=45)
@@ -1752,10 +2011,15 @@ class CustomFirstPersonController(Entity):
         self.mouse_sensitivity = Vec2(40, 40)
 
         self.gravity = 25
+        self.gravity_enabled = True
         self.vertical_velocity = 0
         self.grounded = False
         self.jump_speed = 9  # Adjusted jump speed
         self.jumping = False
+
+        self.last_space_press_time = 0
+        self.space_press_count = 0
+        self.double_press_threshold = 0.3
 
         self.traverse_target = scene     # by default, it will collide with everything. change this to change the raycasts' traverse targets.
         self.ignore_list = [self, ]
@@ -1769,6 +2033,8 @@ class CustomFirstPersonController(Entity):
             ray = raycast(self.world_position+(0,self.height,0), self.down, traverse_target=self.traverse_target, ignore=self.ignore_list)
             if ray.hit:
                 self.y = ray.world_point.y
+
+
 
     def update(self):
         self.rotation_y += mouse.velocity[0] * self.mouse_sensitivity[1]
@@ -1796,7 +2062,7 @@ class CustomFirstPersonController(Entity):
                 move_amount[2] = max(move_amount[2], 0)
             self.position += move_amount
 
-        if self.gravity:
+        if self.gravity and self.gravity_enabled:
             # Apply gravity
             self.vertical_velocity -= self.gravity * time.dt
 
@@ -1820,13 +2086,34 @@ class CustomFirstPersonController(Entity):
                 # No collision, proceed with movement
                 self.y += delta_y
                 self.grounded = False
+        else:
+            self.vertical_velocity = 0
+            self.grounded = False
 
+            vertical_movement = (held_keys['space'] - held_keys['left control']) * self.speed * time.dt
+            self.y += vertical_movement
     def input(self, key):
-        if key == 'space':
+        if key == 'space' and not creative:
             self.jump()
+        if key == 'space' and creative:
+            current_time = time.time()
+            if current_time - self.last_space_press_time <= self.double_press_threshold:
+                # Detected double press
+                self.gravity_enabled = not self.gravity_enabled
+                print(f"Gravity enabled: {self.gravity_enabled}")
+                # Reset the space press count
+                self.space_press_count = 0
+                self.last_space_press_time = 0
+            else:
+                # First press, start counting
+                self.last_space_press_time = current_time
+                self.space_press_count = 1
+                # Handle jump if gravity is enabled
+                if self.gravity_enabled:
+                    self.jump()
 
     def jump(self):
-        if not self.grounded:
+        if not self.grounded or not self.gravity_enabled:
             return
         self.vertical_velocity = self.jump_speed
         self.grounded = False
@@ -1845,9 +2132,51 @@ class CustomFirstPersonController(Entity):
         self._original_camera_transform = camera.transform  # store original position and rotation
         camera.world_parent = scene
 
+transition_speed = 1/15  # Adjust the speed of the color change. original time is 1/1200
+light_to_dark = True  # Flag to determine the direction of transition
+
+last_y_position = None
+fall_start_y = None
+is_falling = False
+health = 100
 
 def update():
-    global fov_slider, issprinting, iscrouching
+    global fov_slider, issprinting, iscrouching, paused, last_y_position, fall_start_y, health, is_falling, light_to_dark
+    if paused:
+        player.enabled = False
+        return
+    current_y = player.position.y
+    if not creative:
+        if last_y_position is not None:
+            if current_y < last_y_position:
+                if not is_falling:
+                    fall_start_y = last_y_position
+                is_falling = True
+            elif current_y >= last_y_position:
+                if is_falling:
+                    fall_distance = fall_start_y - current_y
+                    if fall_distance > 3:
+                        fall_damage = int((fall_distance - 3) * 5)
+                        health -= fall_damage
+                        flash_vignette()
+                        print(f'You took {fall_damage} damage from fall damage!')
+                        num_full_hearts = int(health / 10)
+                        remainder = health % 10
+
+                        for i in range(10):
+                            if i < num_full_hearts:
+                                hearts[::-1][i].texture = 'PyCraft/Textures/fullheart.png'
+                            elif i == num_full_hearts and remainder >= 5:
+                                hearts[::-1][i].texture = 'PyCraft/Textures/halfheart.png'
+                            else:
+                                hearts[::-1][i].texture = 'PyCraft/Textures/emptyheart.png'
+
+                        if health <= 0:
+                            build_death_screen()
+                            print("Player has died")
+                    is_falling = False
+
+    last_y_position = current_y
     update_hand_position(   )
     if holding_block:
         block_drag.position = Vec3(mouse.x, mouse.y, -1.1)
@@ -1861,10 +2190,48 @@ def update():
         if issprinting:
             camera.animate('fov', camera.fov - 10, duration=0.05, curve=curve.linear)
             issprinting = False
+
+    if light_to_dark:
+        sky.color = color.rgb(
+            max(sky.color.r - transition_speed * time.dt, 0),
+            max(sky.color.g - transition_speed * time.dt, 0),
+            max(sky.color.b - transition_speed * time.dt, 0), 
+        )
+        if sky.color.r <= 0 and sky.color.g <= 0 and sky.color.b <= 0:
+            light_to_dark = False
+    else:
+        sky.color = color.rgb(
+            min(sky.color.r + transition_speed * time.dt, 1),
+            min(sky.color.g + transition_speed * time.dt, 1),
+            min(sky.color.b + transition_speed * time.dt, 1),
+        )
+        if sky.color.r >= 1 and sky.color.g >= 1 and sky.color.b >= 1:
+            light_to_dark = True
+
+
+    brightness = sky.color.r
+
+    start_color = color.rgba(1,1,1,0.5)
+    end_color = color.rgba(0.5,0.5,0.5,0.5)
+
+    cloud_r = end_color.r + (start_color.r - end_color.r)*brightness
+    cloud_g = end_color.g + (start_color.g - end_color.g)*brightness
+    cloud_b = end_color.b + (start_color.b - end_color.b)*brightness
+    cloud_a = 0.5
+
+    for cloud in clouds:
+        for c in cloud.children:
+            c.color = color.rgba(cloud_r, cloud_g, cloud_b, cloud_a)
+
+    for cloud in clouds:
+        cloud.x += time.dt * 0.2
+        if cloud.x > 60:
+            cloud.x = -60
     player.enabled = mouse.locked
 player = CustomFirstPersonController()
 player.height = 1.8
 player.camera_pivot.y = 1.8
 mouse.locked = False
-Sky()
+sky = Sky(texture="sky_default")
+sky.color = color.hsv(0, 0, 0.9)
 app.run()
