@@ -311,7 +311,6 @@ class RedWoolVoxel(Button):
         b = min(base_color.b + 0.1, 1.0)
         self.highlight_color = color.rgb(r, g, b)
 block_class_mapping['RedWoolVoxel'] = RedWoolVoxel
-
 class DoorVoxel(Button):
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(30, 0.5, 0.7)
@@ -359,6 +358,40 @@ worldgenerationvoxels = {
     'deepvoxel': Voxel,
 }
 
+block_break_times = {
+    'Voxel': 0.7,
+    'GroundVoxel': 0.8,
+    'BrownVoxel': 0.5,
+    'OakPlanksVoxel': 0.9,
+    'IronOreVoxel': 1.5,
+    'CoalOreVoxel': 1.2,
+    'OakLogVoxel': 1.0,
+    'TreeLeavesVoxel': 0.3,
+    'GlassVoxel': 0.2,
+    'WhiteWoolVoxel': 0.4,
+    'BlackWoolVoxel': 0.4,
+    'RedWoolVoxel': 0.4,
+    'Bedrock': float('inf')  # essentially unbreakable
+}
+
+mining_tools = {
+    Voxel: 0.5,
+    None: 1,
+}
+
+block_breaking_stages = [
+    'PyCraft/Textures/breaking1.png',
+    'PyCraft/Textures/breaking2.png',
+    'PyCraft/Textures/breaking3.png',
+    'PyCraft/Textures/breaking4.png',
+    'PyCraft/Textures/breaking5.png',
+    'PyCraft/Textures/breaking6.png'
+]
+
+currently_breaking_block = None
+block_break_start_time = None
+block_initial_health = None
+mouse_held = False
 
 inventory_opened = False
 inventory_blocks_pg1 = [
@@ -516,7 +549,7 @@ def generate_world(worldseed):
     noise = PerlinNoise (octaves=3, seed=worldseed)
     seedvalue = worldseed
     min_y = -10
-    worlddimensions = 10 #World dimensions are twice this number 
+    worlddimensions = 5 #World dimensions are twice this number 
     for z in range(-worlddimensions,worlddimensions):
         for x in range(-worlddimensions,worlddimensions):
             surface_y = noise([x * .02,z * .02])
@@ -1662,47 +1695,110 @@ def destroy_death_screen():
     last_y_position = None
     player.position = Vec3(*[0,0,0])
 
+mining_animation_running = False
+mining_speed = 0.1
+original_hand_rotation = (90,0,0)
+swing_angle = 45
+swing_sequence = None
+
+def check_mining_and_repeat():
+    global swing_sequence, mining_animation_running
+
+    if mining_animation_running:
+        swing_sequence.start()
+    else:
+        hand.rotation = original_hand_rotation
+def start_mining_animation():
+    global swing_sequence, mining_animation_running
+    mining_animation_running = True
+    hand.rotation = original_hand_rotation
+
+    swing_sequence = Sequence(
+        Func(hand.animate_rotation, (swing_angle, 0, 0), duration=mining_speed, curve=curve.linear),
+        Func(hand.animate_rotation, original_hand_rotation, duration=mining_speed, curve=curve.linear),
+        Func(check_mining_and_repeat)
+    )
+    swing_sequence.start()
+
+def stop_mining_animation():
+    global mining_animation_running
+    mining_animation_running = False
 
 
 build_main_menu()
 defrot = (0,0,0)
 
 
-
-
 selectedvoxel = Voxel
 selected = ''
 def input(key):
-    global selectedvoxel, selector, hand, defrot, selected, world_data, blockcopied, slotselected
+    global selectedvoxel, selector, hand, defrot, selected, world_data, blockcopied, slotselected, currently_breaking_block, block_break_start_time, mouse_held
     if key == 'escape' and not main_menu_open and not inventory_opened:
             toggle_mouse_lock()
     if key == 'e' and not main_menu_open and not pause_menu_open:
         toggle_inventory()
         return
     if mouse.locked:
-        if (key == 'left mouse down' and mouse.hovered_entity and mouse.hovered_entity != player) or (key == 'left mouse down' and selected == 'ak'):
-            if hasattr(mouse.hovered_entity, 'destroyable') and not mouse.hovered_entity.destroyable:
+        if creative:
+            if (key == 'left mouse down' and mouse.hovered_entity and mouse.hovered_entity != player) or (key == 'left mouse down' and selected == 'ak'):
+                if hasattr(mouse.hovered_entity, 'destroyable') and not mouse.hovered_entity.destroyable:
 
-                pass
-            else:
-                if selected == 'ak':
-                    hand.animate_rotation((160, 0, 180), duration=0.1, curve=curve.in_out_expo)
-                        
-                    invoke(hand.animate_rotation, defrot, duration=0.1, curve=curve.in_out_expo, delay=0.1)
+                    pass
                 else:
-                    position = mouse.hovered_entity.position
-                    destroy(mouse.hovered_entity)
+                    if selected == 'ak':
+                        hand.animate_rotation((160, 0, 180), duration=0.1, curve=curve.in_out_expo)
+                            
+                        invoke(hand.animate_rotation, defrot, duration=0.1, curve=curve.in_out_expo, delay=0.1)
+                    else:
+                        position = mouse.hovered_entity.position
+                        destroy(mouse.hovered_entity)
 
-                    for block in world_data:
-                        if block['position'] == [position.x, position.y, position.z]:
-                            world_data.remove(block)
-                            break
+                        for block in world_data:
+                            if block['position'] == [position.x, position.y, position.z]:
+                                world_data.remove(block)
+                                break
 
-                    hand.rotation = defrot
+                        hand.rotation = defrot
 
-                    hand.animate_rotation((110, -30, 0), duration=0.2, curve=curve.in_out_quad)
-                        
-                    invoke(hand.animate_rotation, defrot, duration=0.2, curve=curve.in_out_quad, delay=0.2)
+                        hand.animate_rotation((110, -30, 0), duration=0.2, curve=curve.in_out_quad)
+                            
+                        invoke(hand.animate_rotation, defrot, duration=0.2, curve=curve.in_out_quad, delay=0.2)
+        else:
+            if key == 'left mouse down':
+                if mouse.hovered_entity and hasattr(mouse.hovered_entity, 'isblock') and mouse.hovered_entity.isblock:
+                    if hasattr(mouse.hovered_entity, 'destroyable') and mouse.hovered_entity.destroyable == False:
+                        return
+                    currently_breaking_block = mouse.hovered_entity
+                    currently_breaking_block.original_texture = currently_breaking_block.texture
+                    block_break_start_time = time.time()
+                    mouse_held = True
+                    global overlay_entity, mining_animation_running
+                    start_mining_animation()
+
+                    overlay_entity = Entity(
+                        parent=scene,
+                        position=(currently_breaking_block.position.x, currently_breaking_block.position.y + 0.001, currently_breaking_block.position.z),
+                        model='cube',
+                        scale=currently_breaking_block.scale * 1.005 if f'{currently_breaking_block.model}'[-4:] == 'cube' else (currently_breaking_block.scale * 2) * 1.005,
+                        rotation=currently_breaking_block.rotation,
+                        texture=block_breaking_stages[0],
+                        origin_y=0.5,
+                        color=color.white,
+                        collider=None,
+                        always_on_top=False,
+                        z=currently_breaking_block.z - 0.001,
+                        transparent=True
+                    )
+            if key == 'left mouse up' and currently_breaking_block:
+                currently_breaking_block.texture = currently_breaking_block.original_texture
+                currently_breaking_block = None
+                block_break_start_time = None
+                mouse_held = False
+                stop_mining_animation()
+                if overlay_entity:
+                    destroy(overlay_entity)
+                    overlay_entity = None
+
         
         if key == 'middle mouse down' and creative and mouse.hovered_entity and not hasattr(mouse.hovered_entity, 'wall'):
             global blockcopied
@@ -2141,7 +2237,7 @@ is_falling = False
 health = 100
 
 def update():
-    global fov_slider, issprinting, iscrouching, paused, last_y_position, fall_start_y, health, is_falling, light_to_dark
+    global fov_slider, issprinting, iscrouching, paused, last_y_position, fall_start_y, health, is_falling, light_to_dark, currently_breaking_block, block_break_start_time, mouse_held, overlay_entity, mining_animation_running
     if paused:
         player.enabled = False
         return
@@ -2227,6 +2323,51 @@ def update():
         cloud.x += time.dt * 0.2
         if cloud.x > 60:
             cloud.x = -60
+    if not creative and mouse_held and currently_breaking_block:
+        hit_info = raycast(camera.world_position, camera.forward, distance=5, ignore=(player,))
+        if not hit_info.hit or hit_info.entity != currently_breaking_block:
+            currently_breaking_block.texture = currently_breaking_block.original_texture
+            currently_breaking_block = None
+            block_break_start_time = None
+            mouse_held = False
+
+            if overlay_entity:
+                destroy(overlay_entity)
+                overlay_entity = None
+        else:
+            elapsed = time.time() - block_break_start_time
+            block_type = type(currently_breaking_block).__name__
+            required_time = block_break_times.get(block_type, 1.0)
+            tool_multiplier = mining_tools.get(selectedvoxel, 3.0)
+            if required_time == float('inf'):
+                pass
+            else:
+                ratio = elapsed / (required_time * tool_multiplier)
+                stage_count = 6
+                stage = int(ratio * stage_count)
+                if stage >= stage_count:
+                    stage = stage_count - 1
+                if overlay_entity:
+                    overlay_entity.texture = block_breaking_stages[stage]
+                if elapsed >= (required_time * tool_multiplier):
+                    position = currently_breaking_block.position
+                    destroy(currently_breaking_block)
+                    for block in world_data:
+                        if block['position'] == [position.x, position.y, position.z]:
+                            world_data.remove(block)
+                            break
+                    
+                    currently_breaking_block = None
+                    block_break_start_time = None
+                    mouse_held = False
+                    stop_mining_animation()
+                    if overlay_entity:
+                        destroy(overlay_entity)
+                        overlay_entity = None
+
+                hand.rotation = defrot
+                hand.animate_rotation((110, -30, 0), duration=0.2, curve=curve.in_out_quad)
+                invoke(hand.animate_rotation, defrot, duration=0.2, curve=curve.in_out_quad, delay=0.2)
     player.enabled = mouse.locked
 player = CustomFirstPersonController()
 player.height = 1.8
