@@ -14,11 +14,14 @@ import math
 import importlib
 import importlib.util
 import sys
+from pathlib import Path
 from datetime import datetime
 import time
+script_dir = Path(__file__).parent
+print(f'The relative path is {script_dir}')
 current_datetime = datetime.now()
 app = Ursina(borderless=False, title='PyCraft', icon='PyCraft/pycraftlogo.ico')
-game_version = '2.1'
+game_version = '2.2'
 world_data = []
 hearts = []
 hungers = []
@@ -158,14 +161,14 @@ class OakLogVoxel(Button):
     block_texture='PyCraft/Textures/oaklogatlas.png'
     block_icon = 'PyCraft/Textures/oaklogblock.png'
     block_color = color.hsv(0, 0, .9)
-    block_model = 'PyCraft/Textures/Grass_Block.obj'
+    block_model = 'PyCraft/Textures/atlasblock.obj'
     hand_scale = (0.25, 0.25, 0.25)
     yorg = 1
     def __init__(self, position=(0,0,0)):
         base_color = color.hsv(0, 0, .9)
         super().__init__(parent=scene,
             position=position,
-            model='PyCraft/Textures/Grass_Block.obj',
+            model='PyCraft/Textures/atlasblock.obj',
             origin_y=2,
             scale=0.5,
             texture='PyCraft/Textures/oaklogatlas.png',
@@ -197,6 +200,32 @@ class TreeLeavesVoxel(Button):
         b = min(base_color.b + 0.1, 1.0)
         self.highlight_color = color.rgb(r, g, b)
 block_class_mapping['TreeLeavesVoxel'] = TreeLeavesVoxel
+class Fire(Button):
+    block_texture='PyCraft/Textures/fireatlas.png'
+    block_icon = 'PyCraft/Textures/grassblock.png'
+    block_model = 'PyCraft/Textures/atlasblock.obj'
+    block_color = color.hsv(0, 0, 0.9)
+    hand_scale = (0.25, 0.25, 0.25)
+    yorg = 1
+    def __init__(self, position=(0,0,0)):
+        base_color = color.hsv(0, 0, 0.9)
+        super().__init__(parent=scene,
+            position=position,
+            model='PyCraft/Textures/atlasblock.obj',
+            origin_y=2,
+            texture='PyCraft/Textures/fireatlas.png',
+            scale=0.5,
+            color=base_color,
+            highlight_color=color.cyan,
+            isblock = True
+        )
+        self.is_trigger = True
+
+        r = min(base_color.r + 0.1, 1.0)
+        g = min(base_color.g + 0.1, 1.0)
+        b = min(base_color.b + 0.1, 1.0)
+        self.highlight_color = color.rgb(r, g, b)
+block_class_mapping['Fire'] = Fire
 class GlassVoxel(Button):
     block_texture='PyCraft/Textures/glass.png'
     block_icon = 'PyCraft/Textures/glassblock.png'
@@ -220,7 +249,7 @@ block_class_mapping['GlassVoxel'] = GlassVoxel
 class GroundVoxel(Button):
     block_texture='PyCraft/Textures/grassatlas.png'
     block_icon = 'PyCraft/Textures/grassblock.png'
-    block_model = 'PyCraft/Textures/Grass_Block.obj'
+    block_model = 'PyCraft/Textures/atlasblock.obj'
     block_color = color.hsv(0, 0, 0.9)
     hand_scale = (0.25, 0.25, 0.25)
     yorg = 1
@@ -228,7 +257,7 @@ class GroundVoxel(Button):
         base_color = color.hsv(0, 0, 0.9)
         super().__init__(parent=scene,
             position=position,
-            model='PyCraft/Textures/Grass_Block.obj',
+            model='PyCraft/Textures/atlasblock.obj',
             origin_y=2,
             texture='PyCraft/Textures/grassatlas.png',
             scale=0.5,
@@ -284,6 +313,26 @@ class WhiteWoolVoxel(Button):
         b = min(base_color.b + 0.1, 1.0)
         self.highlight_color = color.rgb(r, g, b)
 block_class_mapping['WhiteWoolVoxel'] = WhiteWoolVoxel
+class ObsidianVoxel(Button):
+    block_texture='PyCraft/Textures/obsidian.png'
+    block_icon = 'PyCraft/Textures/obsidianicon.png'
+    block_color = color.hsv(0, 0, .9)
+    block_model = 'cube'
+    def __init__(self, position=(0,0,0)):
+        base_color = color.hsv(0, 0, .9)
+        super().__init__(parent=scene,
+            position=position,
+            model='cube',
+            origin_y=.5,
+            texture='PyCraft/Textures/obsidian.png',
+            color=base_color,
+            isblock = True
+        )
+        r = min(base_color.r + 0.1, 1.0)
+        g = min(base_color.g + 0.1, 1.0)
+        b = min(base_color.b + 0.1, 1.0)
+        self.highlight_color = color.rgb(r, g, b)
+block_class_mapping['ObsidianVoxel'] = ObsidianVoxel
 class BlackWoolVoxel(Button):
     block_texture='PyCraft/Textures/black_wool.png'
     block_icon = 'PyCraft/Textures/blackwoolblock.png'
@@ -409,7 +458,7 @@ block_class_mapping['GravelVoxel'] = GravelVoxel
 class CraftingTableVoxel(Button):
     block_texture='PyCraft/Textures/craftingtableatlas.png'
     block_icon = 'PyCraft/Textures/craftingtable.png'
-    block_model = 'PyCraft/Textures/Grass_Block.obj'
+    block_model = 'PyCraft/Textures/atlasblock.obj'
     block_color = color.hsv(0, 0, 0.9)
     hand_scale = (0.25, 0.25, 0.25)
     yorg = 1
@@ -417,7 +466,7 @@ class CraftingTableVoxel(Button):
         base_color = color.hsv(0, 0, 0.9)
         super().__init__(parent=scene,
             position=position,
-            model='PyCraft/Textures/Grass_Block.obj',
+            model='PyCraft/Textures/atlasblock.obj',
             origin_y=2,
             texture='PyCraft/Textures/craftingtableatlas.png',
             scale=0.5,
@@ -576,6 +625,17 @@ class DiamondPickaxe(Entity):
     classaffect = ['stone', 'ore']
     istool = True
 
+class Cookie(Entity):
+    block_texture='PyCraft/Textures/cookieicon.png'
+    block_icon = 'PyCraft/Textures/cookieicon.png'
+    block_color = color.hsv(0, 0, .9)
+    block_model = 'quad'
+    defaultrotation = (0,35,10)
+    animationrotation = (55, 105, -50)
+    yorg = 0.00001
+    classaffect = ['stone', 'ore']
+    istool = True
+
 class WoodSword(Entity):
     block_texture=None
     block_icon = 'PyCraft/Textures/woodenpickaxeicon.png'
@@ -588,8 +648,68 @@ class WoodSword(Entity):
     classaffect = []
     istool = True
 
+class FlintAndSteel(Entity):
+    block_texture=None
+    block_icon = 'PyCraft/Textures/flintandsteelicon.png'
+    block_color = color.hsv(0, 0, .9)
+    block_model = 'PyCraft/Textures/flintandsteel.glb'
+    defaultrotation = (-90,230,200)
+    animationrotation = (-70, 200, 200)
+    yorg = 0.75
+    classaffect = []
+    istool = True
 
 #------------
+
+# Animals
+
+class Cow(Entity):
+    def __init__(self, position=(0, 0, 0), model='PyCraft/Textures/cow.glb', texture=None, speed=1, **kwargs):
+        super().__init__(
+            parent=scene,
+            position=position,
+            model=model,
+            texture=texture,
+            scale=0.05,
+            **kwargs
+        )
+        self.speed = speed
+        self.target_position = None
+        self.wandering_timer = time.time()
+        self.gravity = 9.8
+        self.grounded = False
+
+    def update(self):
+        if time.time() - self.wandering_timer > 2:
+            self.wandering_timer = time.time()
+            rand1 = random.uniform(-5, 5)
+            rand2 = random.uniform(-5, 5)
+            self.target_position = self.position + Vec3(
+                rand1,
+                0,
+                rand2
+            )
+            self.rotation = Vec3(0, math.degrees(math.atan2(rand1, rand2)) + 180, 0)
+
+        if self.target_position:
+            direction = (self.target_position - self.position).normalized()
+            self.position += direction * self.speed * time.dt
+
+            if distance(self.position, self.target_position) < 0.1:
+                self.target_position = None
+
+        ray = raycast(self.position + Vec3(0, 1, 0), Vec3(0, -1, 0), distance=2, ignore=(self,))
+        if ray.hit:
+            self.grounded = True
+            self.position = Vec3(self.position.x, ray.world_point.y + 0.9, self.position.z)
+        else:
+            self.grounded = False
+        
+        if not self.grounded:
+            self.position -= Vec3(0, self.gravity * time.dt, 0)
+
+
+
 
 worldgenerationvoxels = {
     'surfacevoxel': GroundVoxel,
@@ -655,25 +775,7 @@ inventory_blocks_pg1 = [
     {'voxel_class': IronOreVoxel, 'texture': IronOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Iron Ore'},
     {'voxel_class': CoalOreVoxel, 'texture': CoalOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Coal Ore'},
     {'voxel_class': Bedrock, 'texture': Bedrock.block_icon, 'color': color.hsv(0,0,1), 'name': 'Bedrock'},
-    {'voxel_class': Voxel, 'texture': Voxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
-    {'voxel_class': Voxel, 'texture': Voxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
-    {'voxel_class': BrownVoxel, 'texture': BrownVoxel.block_icon, 'color': color.hsv(30, 0.5, 0.7), 'name': 'Dirt'},
-    {'voxel_class': GroundVoxel, 'texture': GroundVoxel.block_icon, 'color': color.hsv(120, 0.75, 0.7), 'name': 'Grass'},
-    {'voxel_class': OakPlanksVoxel, 'texture': OakPlanksVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Oak Planks'},
-    {'voxel_class': GlassVoxel, 'texture': GlassVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Glass'},
-    {'voxel_class': IronOreVoxel, 'texture': IronOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Iron Ore'},
-    {'voxel_class': CoalOreVoxel, 'texture': CoalOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Coal Ore'},
-    {'voxel_class': Bedrock, 'texture': Bedrock.block_icon, 'color': color.hsv(0,0,1), 'name': 'Bedrock'},
-    {'voxel_class': Voxel, 'texture': Voxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
-    {'voxel_class': Voxel, 'texture': Voxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
-    {'voxel_class': BrownVoxel, 'texture': BrownVoxel.block_icon, 'color': color.hsv(30, 0.5, 0.7), 'name': 'Dirt'},
-    {'voxel_class': GroundVoxel, 'texture': GroundVoxel.block_icon, 'color': color.hsv(120, 0.75, 0.7), 'name': 'Grass'},
-    {'voxel_class': OakPlanksVoxel, 'texture': OakPlanksVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Oak Planks'},
-    {'voxel_class': GlassVoxel, 'texture': GlassVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Glass'},
-    {'voxel_class': IronOreVoxel, 'texture': IronOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Iron Ore'},
-    {'voxel_class': CoalOreVoxel, 'texture': CoalOreVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Coal Ore'},
-    {'voxel_class': Bedrock, 'texture': Bedrock.block_icon, 'color': color.hsv(0,0,1), 'name': 'Bedrock'},
-    {'voxel_class': Voxel, 'texture': Voxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cobblestone'},
+    {'voxel_class': ObsidianVoxel, 'texture': ObsidianVoxel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Obsidian'},
 
 ]
 inventory_blocks_pg2 = [
@@ -689,7 +791,8 @@ inventory_blocks_pg3 = [
     {'voxel_class': IronPickaxe, 'texture': IronPickaxe.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Iron Pickaxe'},
     {'voxel_class': GoldPickaxe, 'texture': GoldPickaxe.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Gold Pickaxe'},
     {'voxel_class': DiamondPickaxe, 'texture': DiamondPickaxe.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Diamond Pickaxe'},
-
+    {'voxel_class': Cookie, 'texture': Cookie.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Cookie'},
+    {'voxel_class': FlintAndSteel, 'texture': FlintAndSteel.block_icon, 'color': color.hsv(0,0,0.9), 'name': 'Flint and Steel'},
 ]
 
 inventory_blocks_pg4 = [
@@ -731,6 +834,18 @@ game_api = {
 
 clouds = []
 
+animals = []
+
+def spawn_animals(num=5):
+    for _ in range(num):
+        position = Vec3(
+            random.randint(-10,10),
+            1,
+            random.randint(-10,10)
+        )
+        animal = Cow(position=position, model='PyCraft/Textures/cow.glb', texture=None)
+        animals.append(animal)
+
 def generate_clouds(number_of_clouds=10):
     for _ in range(number_of_clouds):
         x = random.randint(-50, 50)
@@ -744,7 +859,7 @@ def generate_clouds(number_of_clouds=10):
 
 generate_clouds()
 
-def load_mod_states(mods_folder='Documents/PyCraft/mods'):
+def load_mod_states(mods_folder=f'{script_dir}/PyCraft/mods'):
     config_path = os.path.join(mods_folder, 'mods_config.json')
     mod_states = {}
 
@@ -769,13 +884,13 @@ def load_mod_states(mods_folder='Documents/PyCraft/mods'):
 
     return mod_states
 
-def save_mod_states(mod_states, mods_folder='Documents/PyCraft/mods'):
+def save_mod_states(mod_states, mods_folder=f'{script_dir}/PyCraft/mods'):
     config_path = os.path.join(mods_folder, 'mods_config.json')
     with open(config_path, 'w') as f:
         json.dump(mod_states, f)
 
 world_mods = []
-def load_mods(mod_states, mods_folder='Documents/PyCraft/mods', game_api=None):
+def load_mods(mod_states, mods_folder=f'{script_dir}/PyCraft/mods', game_api=None):
     global world_mods
     for filename in os.listdir(mods_folder):
         if filename.endswith('.py'):
@@ -803,7 +918,7 @@ def load_mods(mod_states, mods_folder='Documents/PyCraft/mods', game_api=None):
                     if not hasattr(mod, 'deinitialize'):
                         print(f"Mod {mod_name} does not have a 'deinitialize' function.")
 
-mods_folder = 'Documents\PyCraft\mods'
+mods_folder = f'{script_dir}\PyCraft\mods'
 
 mod_states = load_mod_states(mods_folder)
 
@@ -821,7 +936,7 @@ def generate_world(worldseed):
         worldseed = random.randint(1,1000000)
     noise = PerlinNoise (octaves=3, seed=worldseed)
     seedvalue = worldseed
-    min_y = -10
+    min_y = -5
     worlddimensions = 5 #World dimensions are twice this number 
     for z in range(-worlddimensions,worlddimensions):
         for x in range(-worlddimensions,worlddimensions):
@@ -893,6 +1008,7 @@ def generate_world(worldseed):
                         block_type = (type(voxel).__name__)
                 world_data.append({'position': [x, y, z], 'block_type': block_type})
     build_barriers(worlddimensions, min_y)
+    spawn_animals(5)
     player.position = Vec3(*[0,0,0])
     destroy_play_menu()
     build_hotbar()
@@ -1140,7 +1256,7 @@ def rebuild_world_from_data():
 
         
 
-def save_world(filename=r'C:\Users\mberr954\Documents\PyCraft\Worlds\world_save.json'):
+def save_world(filename=f'{script_dir}\\PyCraft\\Worlds\\world_save.json'):
     global worlddimensions, min_y, saved_world_name
     saved_world_name = filename[43:]
     print(saved_world_name)
@@ -1385,7 +1501,7 @@ def build_pause_menu():
         color=color.gray,
         scale=(0.15, 0.02),
         position=(0, -0.1),  
-        on_click = lambda: save_world(f'C:\\Users\\mberr954\\Documents\\PyCraft\\Worlds\\{saved_world_name}')
+        on_click = lambda: save_world(f'{script_dir}\\PyCraft\\Worlds\\{saved_world_name}')
         )
     else:
         save_button = Button(
@@ -1417,7 +1533,7 @@ def build_pause_menu():
                     color=color.gray,
                     scale=(0.15, 0.02),
                     position=(0.3, -0.1),  
-                    on_click = lambda: save_world(f'C:\\Users\\mberr954\\Documents\\PyCraft\\Worlds\\{save_name_field.text}.json')
+                    on_click = lambda: save_world(f'{script_dir}\\PyCraft\\Worlds\\{save_name_field.text}.json')
                 )
                 save_field_open = True
 
@@ -1523,7 +1639,7 @@ def open_mod_menu():
     destroy_main_menu()
     mod_labels = []
     mod_buttons = []
-    mods_folder = 'Documents/PyCraft/mods'
+    mods_folder = f'{script_dir}/PyCraft/mods'
     mod_states = load_mod_states(mods_folder)
 
     for i, mod_name in enumerate(mod_states.keys()):
@@ -1556,7 +1672,7 @@ def open_mod_menu():
 
 def toggle_mod_state(mod_name):
     global mod_states
-    mods_folder = 'Documents/PyCraft/mods'
+    mods_folder = f'{script_dir}/PyCraft/mods'
     mod_states[mod_name] = not mod_states[mod_name]
     save_mod_states(mod_states, mods_folder)
 
@@ -1580,14 +1696,14 @@ def open_play_menu():
     global file_buttons, createworld_button, worldseedinput, play_menu_open, returntomenu_button, creative, mode_select_button
     destroy_main_menu()
     play_menu_open = True
-    folder_path = r'C:\Users\mberr954\Documents\PyCraft\Worlds'
+    folder_path = f'{script_dir}\\PyCraft\\Worlds'
     files = os.listdir(folder_path)
     scroll_container = Entity(parent=camera.ui, position = (0,0.3), scale=(1,1), visible=True)
     scroll_offset = 0
 
     file_buttons = []
     for i, file_name in enumerate(files):
-        filepath = f'Documents/PyCraft/Worlds/{file_name}'
+        filepath = f'{script_dir}/PyCraft/Worlds/{file_name}'
         worldfilebutton = Button(
             parent=scroll_container,
             font="PyCraft/Textures/Fonts/mc.ttf",
@@ -1595,7 +1711,7 @@ def open_play_menu():
             color=color.gray,
             scale=(0.25,0.05),
             position=(-0.25, (-i * 0.06) + 0.1, -2),
-            on_click = lambda file_name=file_name: load_world(f'C:\\Users\\mberr954\\Documents\\PyCraft\\Worlds\\{file_name}')
+            on_click = lambda file_name=file_name: load_world(f'{script_dir}\\PyCraft\\Worlds\\{file_name}')
         )
         world_date = Text(
             parent=scroll_container,
@@ -1611,7 +1727,7 @@ def open_play_menu():
             color=color.red,
             scale=(0.15,0.05),
             position=(0.25, (-i * 0.06) + 0.1, -2),
-            on_click = lambda file_name=file_name: delete_world(f'Documents/PyCraft/Worlds/{file_name}')
+            on_click = lambda file_name=file_name: delete_world(f'{script_dir}/PyCraft/Worlds/{file_name}')
         )
         file_buttons.append(worldfilebutton)
         file_buttons.append(worlddeletebutton)
@@ -2134,7 +2250,8 @@ def input(key):
                         destroy(mouse.hovered_entity)
                         block_class = type(mouse.hovered_entity)
                         texture = mouse.hovered_entity.texture
-                        DroppedBlock(position=position, texture=texture, block_class=block_class)
+                        if not 'Fire' in f"{block_class}":
+                            DroppedBlock(position=position, texture=texture, block_class=block_class)
                         
                         for block in world_data:
                             if block['position'] == [position.x, position.y, position.z]:
@@ -2201,6 +2318,8 @@ def input(key):
             hit_info = raycast(camera.world_position, camera.forward, distance=5, ignore=(player,))
             if hit_info.hit and selectedvoxel and not hasattr(hit_info.entity, 'wall') and not hasattr(selectedvoxel, 'istool'):
                 new_position = hit_info.entity.position + hit_info.normal
+                if selectedvoxel == FlintAndSteel:
+                    Fire(position=new_position)
                 selectedvoxel(position=new_position)
                 block_type = selectedvoxel.__name__
                 if block_type == 'CopiedVoxel':
@@ -2211,13 +2330,17 @@ def input(key):
                 hand.animate_rotation((110, -30, 0), duration=0.2, curve=curve.in_out_quad)
                         
                 invoke(hand.animate_rotation, defrot, duration=0.2, curve=curve.in_out_quad, delay=0.2)
+            elif hit_info.hit and selectedvoxel and not hasattr(hit_info.entity, 'wall') and hasattr(selectedvoxel, 'istool'):
+                if selectedvoxel == FlintAndSteel:
+                    Fire(position=hit_info.entity.position + hit_info.normal)
         if key == 'f3':
-            global debugOpen, worldversion, seedlabel, modslist
+            global debugOpen, worldversion, seedlabel, modslist, coordslabel
             loaded_mods = [i for i in mod_states if mod_states[i]]
             if debugOpen:
                 destroy(worldversion)
                 destroy(seedlabel)
                 destroy(modslist)
+                destroy(coordslabel)
                 debugOpen = False
             else:
                 worldversion = Text(
@@ -2237,6 +2360,15 @@ def input(key):
                 scale=1,            
                 color=color.white,   
                 position=(-0.75, 0.43),            
+                )
+                coordslabel = Text(
+                parent=camera.ui,
+                font="PyCraft/Textures/Fonts/mc.ttf",  
+                text=f'Coordinates: X:{int(player.position.x)} Y:{int(player.position.y)} Z:{int(player.position.z)}',   
+                origin=(0, 0),      
+                scale=1,            
+                color=color.white,   
+                position=(-0.72, 0.35),            
                 )
                 modslist = Text(
                 parent=camera.ui,
@@ -2669,7 +2801,7 @@ def animatehand():
     invoke(hand.animate_rotation, defrot, duration=0.2, curve=curve.in_out_quad, delay=0.2)
 
 def update():
-    global fov_slider, issprinting, iscrouching, paused, last_y_position, fall_start_y, health, is_falling, light_to_dark, currently_breaking_block, block_break_start_time, mouse_held, overlay_entity, mining_animation_running
+    global fov_slider, issprinting, iscrouching, paused, last_y_position, fall_start_y, health, is_falling, light_to_dark, currently_breaking_block, block_break_start_time, mouse_held, overlay_entity, mining_animation_running, coordslabel
     if paused:
         player.enabled = False
         return
@@ -2703,7 +2835,8 @@ def update():
                             build_death_screen()
                             print("Player has died")
                     is_falling = False
-
+    if debugOpen:
+        coordslabel.text = f'Coordinates: X:{int(player.position.x)} Y:{int(player.position.y)} Z:{int(player.position.z)}'
     last_y_position = current_y
     update_hand_position(   )
     if holding_block:
