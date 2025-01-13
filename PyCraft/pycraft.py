@@ -21,7 +21,7 @@ script_dir = Path(__file__).parent
 print(f'The relative path is {script_dir}')
 current_datetime = datetime.now()
 app = Ursina(borderless=False, title='PyCraft', icon='PyCraft/pycraftlogo.ico')
-game_version = '2.2'
+game_version = '3.0'
 world_data = []
 hearts = []
 hungers = []
@@ -38,7 +38,7 @@ block_class_mapping = {}
 paused = False
 spawnpoint = Vec3(*[0,0,0])
 isanimating = False
-
+worldgenerated = False
 Text.default_font = "PyCraft/Textures/Fonts/mc.ttf"
 vignette = Entity(
         parent=camera.ui,
@@ -708,7 +708,26 @@ class Cow(Entity):
         if not self.grounded:
             self.position -= Vec3(0, self.gravity * time.dt, 0)
 
+# ----
 
+class Chunk:
+    def __init__(self, position, size=16):
+        self.position = position
+        self.size = size
+        self.blocks = {}
+    
+    def add_block(self, position, block_type):
+        if position not in self.blocks:
+            self.blocks[position] = block_type
+
+    def generate(self, noise, seed):
+        for x in range(self.size):
+            for z in range(self.size):
+                world_x = self.position[0] * self.size + x
+                world_z = self.position[1] * self.size + z
+                surface_y = math.floor(noise([world_x * 0.02, world_z * 0.02]) * 7.5)
+                for y in range(-2, surface_y + 1):
+                    self.add_block((world_x, y, world_z), 'GroundVoxel')
 
 
 worldgenerationvoxels = {
@@ -923,9 +942,136 @@ mods_folder = f'{script_dir}\PyCraft\mods'
 mod_states = load_mod_states(mods_folder)
 
 
+chunks = {}
+chunk_size = 1
+render_distance = 5
+
+def get_chunk_coords(position):
+    return (position.x // chunk_size, position.z // chunk_size)
+
+def generate_initial_chunks():
+    player_chunk_coords = get_chunk_coords(player.position)
+    chunks_to_generate = [
+        (player_chunk_coords[0] + x, player_chunk_coords[1] + z)
+        for x in range(-render_distance, render_distance + 1)
+        for z in range(-render_distance, render_distance + 1)
+    ]
+
+    for i, chunk_coords in enumerate(chunks_to_generate):
+        invoke(generate_chunk, chunk_coords, noise, delay=i * 0.05)
+
+def generate_tree(chunk, x, y, z):
+    # Generate a simple tree
+    tree_height = 3  # Main trunk height
+    leaves_positions = [
+        (x, y + 3, z + 1), (x + 1, y + 3, z + 1), (x - 1, y + 3, z + 1),
+        (x, y + 3, z - 1), (x + 1, y + 3, z - 1), (x - 1, y + 3, z - 1),
+        (x + 1, y + 3, z), (x - 1, y + 3, z), (x, y + 4, z + 1),
+        (x + 1, y + 4, z + 1), (x - 1, y + 4, z + 1), (x, y + 4, z - 1),
+        (x + 1, y + 4, z - 1), (x - 1, y + 4, z - 1), (x + 1, y + 4, z),
+        (x - 1, y + 4, z), (x, y + 5, z)
+    ]
+
+    for i in range(tree_height):
+        chunk.add_block((x, y + 1 + i, z), 'OakLogVoxel')
+
+    for pos in leaves_positions:
+        chunk.add_block(pos, 'TreeLeavesVoxel')
+
+
+def generate_chunk(chunk_coords, noise):
+    if chunk_coords in chunks:
+        return
+
+    chunk = Chunk(chunk_coords, chunk_size)
+    chunks[chunk_coords] = chunk
+
+    for x in range(chunk_size):
+        for z in range(chunk_size):
+            world_x = chunk_coords[0] * chunk_size + x
+            world_z = chunk_coords[1] * chunk_size + z
+            surface_y = math.floor(noise([world_x * 0.02, world_z * 0.02]) * 7.5)
+
+            for y in range(min_y, surface_y + 1):
+                position = (world_x, y, world_z)
+
+                # Ensure no duplicate blocks are added
+                if position in chunk.blocks:
+                    continue
+
+                if y == surface_y:
+                    chunk.add_block(position, 'GroundVoxel')
+                    ## if random.randint(0, 65) == 5:
+                    ##    generate_tree(chunk, world_x, surface_y, world_z)
+                elif y == min_y:
+                    chunk.add_block(position, 'Bedrock')
+                elif y > surface_y - 3:
+                    chunk.add_block(position, 'BrownVoxel')
+                else:
+                    oregenerator = random.randint(0, 20)
+                    if oregenerator == 5 and y < surface_y - 10:
+                        chunk.add_block(position, 'IronOreVoxel')
+                    elif oregenerator == 15:
+                        chunk.add_block(position, 'CoalOreVoxel')
+                    else:
+                        chunk.add_block(position, 'Voxel')
+
+    # Create entities for blocks in the chunk
+    for position, block_type in chunk.blocks.items():
+        block_class = block_class_mapping[block_type]
+        block_class(position=Vec3(*position))
+
+
+chunk_processing_queue = []
+chunk_unloading_queue = []
+def update_visible_chunks(player_position):
+    global chunk_processing_queue
+
+    player_chunk_coords = get_chunk_coords(player_position)
+    for x in range(-render_distance, render_distance + 1):
+        for z in range(-render_distance, render_distance + 1):
+            chunk_coords = (player_chunk_coords[0] + x, player_chunk_coords[1] + z)
+            if chunk_coords not in chunks and chunk_coords not in chunk_processing_queue:
+                chunk_processing_queue.append(chunk_coords)
+
+    chunks_to_remove = [
+        chunk_coords for chunk_coords in chunks
+        if abs(chunk_coords[0] - player_chunk_coords[0]) > render_distance
+        or abs(chunk_coords[1] - player_chunk_coords[1]) > render_distance
+    ]
+
+    for chunk_coords in chunks_to_remove:
+        if chunk_coords not in chunk_unloading_queue:
+            chunk_unloading_queue.append(chunk_coords)
+
+    process_chunks_in_queue()
+    process_chunk_unloading_queue()
+
+def process_chunks_in_queue(batch_size=5):
+    global chunk_processing_queue
+
+    for _ in range(min(batch_size, len(chunk_processing_queue))):
+        chunk_coords = chunk_processing_queue.pop(0)
+        generate_chunk(chunk_coords, noise)
+
+def process_chunk_unloading_queue(batch_size=5):
+    global chunk_unloading_queue
+
+    for _ in range(min(batch_size, len(chunk_unloading_queue))):
+        chunk_coords = chunk_unloading_queue.pop(0)
+
+        for position in chunks[chunk_coords].blocks.keys():
+            for entity in scene.entities:
+                if isinstance(entity, Button) and entity.position == Vec3(*position):
+                    destroy(entity)
+
+        del chunks[chunk_coords]
+
 
 def generate_world(worldseed):
-    global worlddimensions, min_y, seedvalue, worldver, inventory_blocks_pg1, inventory_blocks_pg2
+    global worlddimensions, min_y, seedvalue, worldver, inventory_blocks_pg1, inventory_blocks_pg2, noise, worldgenerated
+    worldgenerated = True
+    min_y = -4
     load_mods(mod_states, mods_folder, game_api)
     clear_world()
     worldver = game_version
@@ -936,80 +1082,9 @@ def generate_world(worldseed):
         worldseed = random.randint(1,1000000)
     noise = PerlinNoise (octaves=3, seed=worldseed)
     seedvalue = worldseed
-    min_y = -5
-    worlddimensions = 5 #World dimensions are twice this number 
-    for z in range(-worlddimensions,worlddimensions):
-        for x in range(-worlddimensions,worlddimensions):
-            surface_y = noise([x * .02,z * .02])
-            surface_y = math.floor(surface_y*7.5)
-            for y in range(min_y, surface_y + 1):
-                position = (x, y, z)
-                if y == surface_y:
-                    voxel = worldgenerationvoxels['surfacevoxel'](position=position)
-                    block_type = (type(voxel).__name__)
-                    treegenerator = random.randint(0,65)
-                    if treegenerator == 5:
-                        voxel = OakLogVoxel(position=(x,y+1,z))
-                        world_data.append({'position': [x, y+1, z], 'block_type': 'OakLogVoxel'})
-                        voxel = OakLogVoxel(position=(x,y+2,z))
-                        world_data.append({'position': [x, y+2, z], 'block_type': 'OakLogVoxel'})
-                        voxel = OakLogVoxel(position=(x,y+3,z))
-                        world_data.append({'position': [x, y+3, z], 'block_type': 'OakLogVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x,y+3,z+1))
-                        world_data.append({'position': [x, y+3, z+1], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x+1,y+3,z+1))
-                        world_data.append({'position': [x+1, y+3, z+1], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x-1,y+3,z+1))
-                        world_data.append({'position': [x-1, y+3, z+1], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x,y+3,z-1))
-                        world_data.append({'position': [x, y+3, z-1], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x+1,y+3,z-1))
-                        world_data.append({'position': [x+1, y+3, z-1], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x-1,y+3,z-1))
-                        world_data.append({'position': [x-1, y+3, z-1], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x+1,y+3,z))
-                        world_data.append({'position': [x+1, y+3, z], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x-1,y+3,z))
-                        world_data.append({'position': [x-1, y+3, z], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x,y+4,z+1))
-                        world_data.append({'position': [x, y+4, z+1], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x+1,y+4,z+1))
-                        world_data.append({'position': [x+1, y+4, z+1], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x-1,y+4,z+1))
-                        world_data.append({'position': [x-1, y+4, z+1], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x,y+4,z-1))
-                        world_data.append({'position': [x, y+4, z-1], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x+1,y+4,z-1))
-                        world_data.append({'position': [x+1, y+4, z-1], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x-1,y+4,z-1))
-                        world_data.append({'position': [x-1, y+4, z-1], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x+1,y+4,z))
-                        world_data.append({'position': [x+1, y+4, z], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x-1,y+4,z))
-                        world_data.append({'position': [x-1, y+4, z], 'block_type': 'TreeLeavesVoxel'})
-                        voxel = TreeLeavesVoxel(position=(x,y+5,z))
-                        world_data.append({'position': [x, y+5, z], 'block_type': 'TreeLeavesVoxel'})
-                elif y == min_y:
-                    voxel = worldgenerationvoxels['minvoxel'](position=position)
-                    block_type = (type(voxel).__name__)
-                elif y > surface_y - 3:
-                    voxel = worldgenerationvoxels['undersurfacevoxel'](position=position)
-                    block_type = (type(voxel).__name__)
-                else:
-                    oregenerator = random.randint(0,20)
-                    if oregenerator == 5 and y < surface_y - 10:
-                        voxel = IronOreVoxel(position=position)
-                        block_type = 'IronOreVoxel'
-                    elif oregenerator == 15:
-                        voxel = CoalOreVoxel(position=position)
-                        block_type = 'CoalOreVoxel'
-                    else:
-                        voxel = worldgenerationvoxels['deepvoxel'](position=position)
-                        block_type = (type(voxel).__name__)
-                world_data.append({'position': [x, y, z], 'block_type': block_type})
-    build_barriers(worlddimensions, min_y)
-    spawn_animals(5)
-    player.position = Vec3(*[0,0,0])
+    player.position = Vec3(*[0,50,0])
+    player_chunk_coords = get_chunk_coords(player.position)
+    generate_initial_chunks()
     destroy_play_menu()
     build_hotbar()
     update_equipped_slot(slot1)
@@ -2838,6 +2913,8 @@ def update():
     if debugOpen:
         coordslabel.text = f'Coordinates: X:{int(player.position.x)} Y:{int(player.position.y)} Z:{int(player.position.z)}'
     last_y_position = current_y
+    if worldgenerated:
+        update_visible_chunks(player.position)
     update_hand_position(   )
     if holding_block:
         block_drag.position = Vec3(mouse.x, mouse.y, -1.1)
